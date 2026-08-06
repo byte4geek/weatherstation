@@ -1,9 +1,6 @@
 # DIY Smart Weather Station (v1.0.0)
 
 A feature-rich, high-precision ESP8266-based Smart Weather Station with a modern responsive Web Dashboard, dynamic sensor detection, customizable moving-average filters, Home Assistant MQTT Auto-Discovery, full backup/restore capability, and hardware factory reset logic.
-
-![Smart Weather Station](https://raw.githubusercontent.com/byte4geek/weatherstation/refs/heads/main/images/fully_optionals_smart_wheather_station_small.jpg)
-
 ---
 
 ## 📋 Table of Contents
