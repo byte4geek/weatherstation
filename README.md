@@ -7,7 +7,8 @@ A feature-rich, high-precision ESP8266-based Smart Weather Station with a modern
 
 - [Features](#-features)
 - [Photo Gallery](GALLERY.md)
-- [Required Hardware](#-required-hardware)
+- [Required Hardware & Purchase Links](#-required-hardware--purchase-links)
+- [3D Printing & Mechanical Assembly](#-3d-printing--mechanical-assembly)
 - [Wiring & Pinout](#-wiring--pinout)
 - [Web Interface Overview](#-web-interface-overview)
   - [Dashboard](#1-dashboard-tab)
@@ -75,20 +76,55 @@ Click on any image below or in the gallery to open the full-resolution view!
 
 ---
 
-## 🛠 Required Hardware
+## 🛒 Required Hardware & Purchase Links
 
-| Component | Function / Measurement | Interface | Default Address / Pin |
-|---|---|---|---|
-| **ESP8266 NodeMCU v3** (or ESP-12E) | Main Microcontroller | — | — |
-| **AHT20 / AHT21** | Temperature & Relative Humidity | I2C | `0x38` |
-| **BMP280** | Barometric Pressure & Temperature | I2C | `0x76` or `0x77` |
-| **ENS160** | Air Quality (TVOC, eCO2, AQI) | I2C | `0x53` or `0x52` |
-| **AS5600** | Magnetic Rotary Encoder (Wind Direction Vane) | I2C | `0x36` |
-| **BH1750** | Ambient Light / Lux Sensor (behind enclosure cover) | I2C | `0x23` |
-| **Rain Gauge Bucket** | Tipping Bucket Rain Counter (A3144 Hall / Reed switch) | GPIO Interrupt | GPIO 14 (D5) |
-| **Anemometer** | Wind Speed Pulses (Hall / Reed switch) | GPIO Interrupt | GPIO 12 (D6) |
-| **FLASH Button** | Factory NVS Wipe (Hold 10 seconds) | GPIO Pull-Up | GPIO 0 (D3) |
-| **Status LED** | Onboard Blue LED (WiFi & MQTT status indicator) | Active-LOW Output | GPIO 2 (D4) |
+Below is the list of components used in this build, along with referral links to purchase them on AliExpress:
+
+| Component | Function / Measurement | Interface | Address / Pin | Purchase Link |
+|---|---|---|---|---|
+| **ESP8266 NodeMCU v3** (or ESP-12E) | Main Microcontroller | — | — | [🛒 Buy on AliExpress](https://s.click.aliexpress.com/e/_c35pmlcL) |
+| **AHT20 + BMP280 Module** | Temp, Humidity & Pressure | I2C | `0x38` / `0x76` | [🛒 Buy on AliExpress](https://s.click.aliexpress.com/e/_c4eIj6iL) |
+| **ENS160 Sensor** | Air Quality (TVOC, eCO2, AQI) | I2C | `0x53` or `0x52` | [🛒 Buy on AliExpress](https://s.click.aliexpress.com/e/_c3cfxi5h) |
+| **AS5600 Magnetic Encoder** | Contactless Wind Direction Vane | I2C | `0x36` | [🛒 Buy on AliExpress](https://s.click.aliexpress.com/e/_c3MPeZFv) |
+| **BH1750 Lux Sensor** | Ambient Light / Luminosity | I2C | `0x23` | [🛒 Buy on AliExpress](https://s.click.aliexpress.com/e/_c3y4FY0P) |
+| **A3144 Hall Sensor** | Anemometer & Rain Bucket Pulses | GPIO Interrupt | GPIO 12 & GPIO 14 | [🛒 Buy on AliExpress](https://s.click.aliexpress.com/e/_c3e8m5mR) |
+| **608Z Ball Bearings** | Low-Friction Bearings (Wind Speed & Dir) | Mechanical | — | [🛒 Buy on AliExpress](https://s.click.aliexpress.com/e/_c2JGdVCF) |
+| **5V Power Supply Module** | System Power Supply | Power | 5V / Vin | [🛒 Buy on AliExpress](https://s.click.aliexpress.com/e/_c4eHOFu7) |
+| **FLASH Button** | Factory NVS Wipe (Hold 10s) | GPIO Pull-Up | GPIO 0 (D3) | Built-in on NodeMCU |
+| **Status LED** | WiFi & MQTT Status Indicator | Active-LOW | GPIO 2 (D4) | Built-in on NodeMCU |
+
+---
+
+## 🖨️ 3D Printing & Mechanical Assembly
+
+### 🖨️ 3D Printed Models (MakerWorld)
+All 3D printable STL files and print profiles for the enclosures, radiation shields, sensor arms, and mounting brackets are hosted on MakerWorld:
+👉 **[Fully Optional Smart Weather Station on MakerWorld](https://makerworld.com/it/models/3139553-fully-optional-smart-weather-station#profileId-3544712)**
+
+---
+
+### 🌧️ Rain Gauge Modification & Calibration
+The rain gauge mechanism is a modified version of the [SS4H-RG Rain Gauge Project by SmartSolutions4Home](https://smartsolutions4home.com/ss4h-rg-rain-gauge/).
+- **Sensitivity Modifications**: The funnel surface area was enlarged to capture a higher volume of rainfall, significantly increasing sensor sensitivity. In addition, **2 magnets** were inserted into the tipping bucket for precise pulse triggering.
+- **Calibration Procedure**:
+  - You can refer to the calibration instructions in the original SS4H-RG project, or calibrate manually using water volume:
+  1. Slowly pour exactly **6 ml of water** into one side of the tipping bucket.
+  2. Turn the adjustment screw beneath that side until the bucket tips and drains the water.
+  3. Repeat the exact same step for the opposite side of the bucket to ensure balanced tipping on both sides.
+
+---
+
+### ⚙️ Ball Bearing Degreasing & Lubrication (608Z Bearings)
+To ensure the anemometer (wind speed) and wind vane (wind direction) turn freely even in light breezes, factory grease must be removed from the 608Z ball bearings:
+1. **Isopropyl Alcohol (IPA) Bath**: Soak the bearings in Isopropyl Alcohol for **15 minutes**. Shake them, drain, and repeat with a fresh IPA bath for another **15 minutes** (2 cycles of 15 minutes total). Soaking twice for 15 minutes flushes out all heavy packing grease for optimal results.
+2. **Lubrication**: Once dry and degreased, apply a few drops of light oil—such as **gun oil** or **sewing machine oil**—for ultra-low-friction rotation.
+
+---
+
+### 🛠️ Mechanical Assembly & Mounting Notes
+- **Sensor Support Arms**: The arms holding the sensor housings must be press-fitted into the main pole mounting base with firm pressure. Use a **rubber mallet** to gently tap them into place if needed.
+- **Pole Mount Diameter**: The mounting base is designed to fit standard **3/4-inch galvanized steel pipes** (tubi zincati da 3/4").
+- **M8 Thread Retapping**: The M8 screw threads on the pole mount base should be chased/retapped using an **M8 thread tap tool**. Retapping cleans up the 3D-printed threads so M8 clamping bolts can be easily threaded in and tightened securely against the metal pipe, preventing the base from twisting or slipping in strong winds.
 
 ---
 
