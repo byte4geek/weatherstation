@@ -9,6 +9,7 @@ A feature-rich, high-precision ESP8266-based Smart Weather Station with a modern
 ## 📋 Table of Contents
 
 - [Features](#-features)
+- [Photo Gallery](GALLERY.md)
 - [Required Hardware](#-required-hardware)
 - [Wiring & Pinout](#-wiring--pinout)
 - [Web Interface Overview](#-web-interface-overview)
@@ -47,6 +48,33 @@ A feature-rich, high-precision ESP8266-based Smart Weather Station with a modern
   - Automatic entity creation in Home Assistant without manual YAML editing.
 - **Backup & Restore**: Single-click JSON export/import including full network, sensor, and MQTT configurations.
 - **Hardware Safety & Diagnostics**: 10-second hold on FLASH button (GPIO 0) for NVS memory wipe / factory reset.
+
+---
+
+## 📸 Photo Gallery
+
+Explore the complete build, sensor mounting, electronics enclosure, and web dashboard screenshots in our dedicated **[Photo Gallery (GALLERY.md)](GALLERY.md)**.
+
+Click on any image below or in the gallery to open the full-resolution view!
+
+<table>
+  <tr>
+    <td align="center" width="33%">
+      <a href="images/fully_optionals_smart_wheather_station.jpg"><img src="images/fully_optionals_smart_wheather_station.jpg" width="280" alt="Smart Weather Station"/></a><br/>
+      <b>Smart Weather Station</b>
+    </td>
+    <td align="center" width="33%">
+      <a href="images/weahet_station_dashboard.png"><img src="images/weahet_station_dashboard.png" width="280" alt="Web Dashboard"/></a><br/>
+      <b>Web Dashboard</b>
+    </td>
+    <td align="center" width="33%">
+      <a href="images/esp%2Bpower%20box.jpg"><img src="images/esp%2Bpower%20box.jpg" width="280" alt="Electronics Enclosure"/></a><br/>
+      <b>Electronics Box</b>
+    </td>
+  </tr>
+</table>
+
+👉 **[View Full Photo Gallery (30 Photos) ➔](GALLERY.md)**
 
 ---
 
