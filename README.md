@@ -382,5 +382,5 @@ pio device monitor -b 115200
 ## 📄 License & Credits
 
 - **Author**: PeppeBytes
-- **Firmware Version**: v1.0.0 (Release 2026)
+- **Firmware Version**: v1.0.3 (Release 2026)
 - **License**: MIT License
