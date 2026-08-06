@@ -16,8 +16,12 @@ const char index_html[] PROGMEM = R"rawliteral(
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DIY Smart Weather Station 2026</title>
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><circle cx='24' cy='24' r='12' fill='%23f59e0b'/><path fill='%2306b6d4' d='M46 28a14 14 0 0 0-26.6-4.5A12 12 0 0 0 8 34a12 12 0 0 0 12 12h26a10 10 0 0 0 0-20z'/></svg>">
     <!-- Google Fonts Outfit -->
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Material Design Icons CDN -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css">
     <style>
         :root {
             --bg-grad: radial-gradient(circle at top, #0f172a, #020617);
@@ -34,6 +38,150 @@ const char index_html[] PROGMEM = R"rawliteral(
             --danger-glow: rgba(239, 68, 68, 0.3);
             --console-bg: #030712;
             --console-text: #34d399;
+        }
+
+        /* Compact Board Single-Container Layout */
+        .compact-board {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 16px;
+            backdrop-filter: blur(16px);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+            max-width: 900px;
+            margin: 0 auto 20px auto;
+        }
+
+        .c-board-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--card-border);
+            margin-bottom: 14px;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .c-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 800;
+            font-size: 1.15rem;
+            color: var(--text-main);
+        }
+
+        .c-badge-ver {
+            font-size: 0.7rem;
+            background: rgba(6, 182, 212, 0.15);
+            color: var(--primary);
+            padding: 2px 6px;
+            border-radius: 6px;
+            border: 1px solid rgba(6, 182, 212, 0.3);
+        }
+
+        .c-header-badges {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .c-status-badge {
+            font-size: 0.75rem;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .badge-info {
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--text-muted);
+            border: 1px solid var(--card-border);
+        }
+
+        .c-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        @media (min-width: 600px) {
+            .c-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+
+        .c-tile {
+            background: rgba(15, 23, 42, 0.5);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 10px 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .c-tile.c-span-2 {
+            grid-column: span 2;
+        }
+
+        .c-tile-icon {
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .c-tile-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .c-tile-label {
+            font-size: 0.68rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .c-tile-val {
+            font-size: 1.15rem;
+            font-weight: 800;
+            color: var(--text-main);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            line-height: 1.2;
+        }
+
+        .c-unit {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-weight: 400;
+        }
+
+        .c-tile-sub {
+            font-size: 0.68rem;
+            color: var(--text-muted);
+            margin-top: 1px;
+        }
+
+        .c-board-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 10px;
+            border-top: 1px solid var(--card-border);
+            margin-top: 12px;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            flex-wrap: wrap;
+            gap: 8px;
         }
 
         * {
@@ -99,6 +247,35 @@ const char index_html[] PROGMEM = R"rawliteral(
             font-weight: 600;
             font-size: 0.95rem;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+            header h1 {
+                font-size: 1.6rem;
+            }
+            .nav-tabs {
+                gap: 4px;
+                padding: 4px;
+                border-radius: 16px;
+                width: 100%;
+                overflow-x: auto;
+                justify-content: space-between;
+            }
+            .tab-btn {
+                padding: 8px 8px;
+                font-size: 0.8rem;
+                border-radius: 12px;
+                flex: 1;
+                text-align: center;
+                white-space: nowrap;
+            }
+            .tab-btn i {
+                font-size: 0.85rem;
+                margin-right: 2px;
+            }
         }
 
         .tab-btn.active {
@@ -463,110 +640,215 @@ const char index_html[] PROGMEM = R"rawliteral(
         </header>
 
         <nav class="nav-tabs">
-            <button class="tab-btn active" onclick="switchTab('dashboard')">Dashboard</button>
-            <button class="tab-btn" onclick="switchTab('console')">Console</button>
-            <button class="tab-btn" onclick="switchTab('config')">Settings</button>
-            <button class="tab-btn" onclick="switchTab('info')">Info</button>
+            <button class="tab-btn active" onclick="switchTab('dashboard')"><i class="mdi mdi-view-dashboard-outline"></i> Dashboard</button>
+            <button class="tab-btn" onclick="switchTab('console')"><i class="mdi mdi-console"></i> Console</button>
+            <button class="tab-btn" onclick="switchTab('config')"><i class="mdi mdi-cog-outline"></i> Settings</button>
+            <button class="tab-btn" onclick="switchTab('info')"><i class="mdi mdi-information-outline"></i> Info</button>
         </nav>
 
         <!-- DASHBOARD TAB -->
         <div id="dashboard" class="tab-content active">
-            <div class="grid">
-                <div class="card primary">
-                    <div class="card-title">Temperature</div>
-                    <div class="card-value" id="val_temp">-- <span class="card-unit">°C</span></div>
+            <!-- CLASSIC VIEW GRID -->
+            <div id="classic_dashboard_grid">
+                <div class="grid">
+                    <div class="card primary">
+                        <div class="card-title"><i class="mdi mdi-thermometer" style="color: #ef4444; font-size: 1.1rem; vertical-align: -2px; margin-right: 4px;"></i> Temperature</div>
+                        <div class="card-value" id="val_temp">-- <span class="card-unit">°C</span></div>
+                    </div>
+                    <div class="card primary">
+                        <div class="card-title"><i class="mdi mdi-water-percent" style="color: #06b6d4; font-size: 1.1rem; vertical-align: -2px; margin-right: 4px;"></i> Humidity</div>
+                        <div class="card-value" id="val_hum">-- <span class="card-unit">%</span></div>
+                    </div>
+                    <div class="card primary">
+                        <div class="card-title"><i class="mdi mdi-gauge" style="color: #8b5cf6; font-size: 1.1rem; vertical-align: -2px; margin-right: 4px;"></i> Pressure</div>
+                        <div class="card-value" id="val_press">-- <span class="card-unit">hPa</span></div>
+                    </div>
                 </div>
-                <div class="card primary">
-                    <div class="card-title">Humidity</div>
-                    <div class="card-value" id="val_hum">-- <span class="card-unit">%</span></div>
-                </div>
-                <div class="card primary">
-                    <div class="card-title">Pressure</div>
-                    <div class="card-value" id="val_press">-- <span class="card-unit">hPa</span></div>
-                </div>
-            </div>
 
-            <div class="grid">
-                <div class="card primary">
-                    <div class="card-title">Air Quality (AQI)</div>
-                    <div class="card-value" id="val_aqi">--</div>
+                <div class="grid">
+                    <div class="card primary">
+                        <div class="card-title"><i class="mdi mdi-air-filter" style="color: #10b981; font-size: 1.1rem; vertical-align: -2px; margin-right: 4px;"></i> Air Quality (AQI)</div>
+                        <div class="card-value" id="val_aqi">--</div>
+                    </div>
+                    <div class="card primary">
+                        <div class="card-title"><i class="mdi mdi-molecule-co2" style="color: #f59e0b; font-size: 1.1rem; vertical-align: -2px; margin-right: 4px;"></i> Equivalent CO2 (eCO2)</div>
+                        <div class="card-value" id="val_eco2">-- <span class="card-unit">ppm</span></div>
+                    </div>
+                    <div class="card primary">
+                        <div class="card-title"><i class="mdi mdi-molecule" style="color: #ec4899; font-size: 1.1rem; vertical-align: -2px; margin-right: 4px;"></i> TVOC</div>
+                        <div class="card-value" id="val_tvoc">-- <span class="card-unit">ppb</span></div>
+                    </div>
                 </div>
-                <div class="card primary">
-                    <div class="card-title">Equivalent CO2 (eCO2)</div>
-                    <div class="card-value" id="val_eco2">-- <span class="card-unit">ppm</span></div>
-                </div>
-                <div class="card primary">
-                    <div class="card-title">TVOC</div>
-                    <div class="card-value" id="val_tvoc">-- <span class="card-unit">ppb</span></div>
-                </div>
-            </div>
 
-            <div class="grid">
-                <div class="card primary">
-                    <div class="card-title">Wind Speed</div>
-                    <div class="card-value" id="val_wind_speed">-- <span class="card-unit">km/h</span></div>
-                    <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;" id="val_wind_speed_sub">-- m/s &bull; -- kt</div>
+                <div class="grid">
+                    <div class="card primary">
+                        <div class="card-title"><i class="mdi mdi-weather-windy" style="color: #3b82f6; font-size: 1.1rem; vertical-align: -2px; margin-right: 4px;"></i> Wind Speed</div>
+                        <div class="card-value" id="val_wind_speed">-- <span class="card-unit">km/h</span></div>
+                        <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;" id="val_wind_speed_sub">-- m/s &bull; -- kt</div>
+                    </div>
+                    <div class="card primary">
+                        <div class="card-title"><i class="mdi mdi-weather-tornado" style="color: #f97316; font-size: 1.1rem; vertical-align: -2px; margin-right: 4px;"></i> Max Gust (Today)</div>
+                        <div class="card-value" id="val_wind_gust">-- <span class="card-unit">km/h</span></div>
+                        <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;" id="val_wind_gust_sub">-- m/s &bull; -- kt</div>
+                    </div>
+                    <div class="card primary">
+                        <div class="card-title"><i class="mdi mdi-compass-outline" style="color: #14b8a6; font-size: 1.1rem; vertical-align: -2px; margin-right: 4px;"></i> Wind Direction</div>
+                        <div class="card-value" id="val_wind_dir">--</div>
+                    </div>
+                    <div class="card primary">
+                        <div class="card-title"><i class="mdi mdi-white-balance-sunny" style="color: #eab308; font-size: 1.1rem; vertical-align: -2px; margin-right: 4px;"></i> Luminosity</div>
+                        <div class="card-value" id="val_lux">-- <span class="card-unit">lx</span></div>
+                    </div>
                 </div>
-                <div class="card primary">
-                    <div class="card-title">Max Gust (Today)</div>
-                    <div class="card-value" id="val_wind_gust">-- <span class="card-unit">km/h</span></div>
-                    <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;" id="val_wind_gust_sub">-- m/s &bull; -- kt</div>
-                </div>
-                <div class="card primary">
-                    <div class="card-title">Wind Direction</div>
-                    <div class="card-value" id="val_wind_dir">--</div>
-                </div>
-                <div class="card primary">
-                    <div class="card-title">Luminosity</div>
-                    <div class="card-value" id="val_lux">-- <span class="card-unit">lx</span></div>
-                </div>
-            </div>
 
-            <div class="grid">
-                <div class="card primary">
-                    <div class="card-title">Last Hour</div>
-                    <div class="card-value"><span id="val_hour">0.00</span> <span class="card-unit" id="unit_hour">mm</span></div>
+                <div class="grid">
+                    <div class="card primary">
+                        <div class="card-title"><i class="mdi mdi-weather-partly-rainy" style="color: #3b82f6; font-size: 1.1rem; vertical-align: -2px; margin-right: 4px;"></i> Last Hour</div>
+                        <div class="card-value"><span id="val_hour">0.00</span> <span class="card-unit" id="unit_hour">mm</span></div>
+                    </div>
+                    <div class="card primary">
+                        <div class="card-title"><i class="mdi mdi-weather-pouring" style="color: #2563eb; font-size: 1.1rem; vertical-align: -2px; margin-right: 4px;"></i> Last 24 Hours</div>
+                        <div class="card-value"><span id="val_day">0.00</span> <span class="card-unit" id="unit_day">mm</span></div>
+                    </div>
+                    <div class="card success">
+                        <div class="card-title"><i class="mdi mdi-water" style="color: #1d4ed8; font-size: 1.1rem; vertical-align: -2px; margin-right: 4px;"></i> Total Rain</div>
+                        <div class="card-value"><span id="val_total">0.00</span> <span class="card-unit" id="unit_total">mm</span></div>
+                        <div style="margin-top: 10px;">
+                            <button class="btn btn-sec" style="font-size: 0.8rem; padding: 6px 12px; border-radius: 6px;" onclick="clearCounters()"><i class="mdi mdi-refresh"></i> Reset</button>
+                        </div>
+                    </div>
                 </div>
-                <div class="card primary">
-                    <div class="card-title">Last 24 Hours</div>
-                    <div class="card-value"><span id="val_day">0.00</span> <span class="card-unit" id="unit_day">mm</span></div>
+
+                <div class="grid" style="margin-bottom: 25px;">
+                    <div class="card warning" style="grid-column: span 3; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px;">
+                        <div class="card-title" style="margin-bottom: 8px;"><i class="mdi mdi-weather-rainy" style="font-size: 1.1rem; vertical-align: -2px; margin-right: 4px;"></i> Rain Status</div>
+                        <div id="rain_status_badge" class="status-badge badge-clear">
+                            <span id="rain_status_dot" style="width: 10px; height: 10px; border-radius: 50%; background: currentColor;"></span>
+                            <span id="rain_status_text">No Rain</span>
+                        </div>
+                    </div>
                 </div>
-                <div class="card success">
-                    <div class="card-title">Total Rain</div>
-                    <div class="card-value"><span id="val_total">0.00</span> <span class="card-unit" id="unit_total">mm</span></div>
-                    <div style="margin-top: 10px;">
-                        <button class="btn btn-sec" style="font-size: 0.8rem; padding: 6px 12px; border-radius: 6px;" onclick="clearCounters()">Reset</button>
+
+                <div class="panel">
+                    <div class="panel-section">
+                        <h3><i class="mdi mdi-chip" style="color: var(--primary); margin-right: 6px;"></i> System Information</h3>
+                        <table class="info-table">
+                            <tr><td><i class="mdi mdi-clock-outline" style="color: var(--primary); margin-right: 4px;"></i> Date/Time (GMT-0)</td><td><span id="sys_time">NTP Syncing...</span></td></tr>
+                            <tr><td><i class="mdi mdi-wifi" style="color: var(--primary); margin-right: 4px;"></i> Wi-Fi SSID</td><td><span id="sys_ssid">--</span></td></tr>
+                            <tr><td><i class="mdi mdi-signal" style="color: var(--primary); margin-right: 4px;"></i> Signal RSSI</td><td><span id="sys_rssi">--</span></td></tr>
+                            <tr><td><i class="mdi mdi-ip-network" style="color: var(--primary); margin-right: 4px;"></i> IP Address</td><td><span id="sys_ip">--</span></td></tr>
+                            <tr><td><i class="mdi mdi-timer-outline" style="color: var(--primary); margin-right: 4px;"></i> Uptime</td><td><span id="sys_uptime">--</span></td></tr>
+                            <tr><td><i class="mdi mdi-counter" style="color: var(--primary); margin-right: 4px;"></i> Total Hall Tips</td><td><span id="sys_tips">0</span></td></tr>
+                            <tr><td><i class="mdi mdi-flash" style="color: var(--warning); margin-right: 4px;"></i> Supply Voltage</td><td><span id="sys_vcc">--</span></td></tr>
+                            <tr><td><i class="mdi mdi-chip" style="color: var(--success); margin-right: 4px;"></i> Free Memory</td><td><span id="sys_heap">--</span></td></tr>
+                        </table>
                     </div>
                 </div>
             </div>
 
-            <div class="grid" style="margin-bottom: 25px;">
-                <div class="card warning" style="grid-column: span 3; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px;">
-                    <div class="card-title" style="margin-bottom: 8px;">Rain Status</div>
-                    <div id="rain_status_badge" class="status-badge badge-clear">
-                        <span id="rain_status_dot" style="width: 10px; height: 10px; border-radius: 50%; background: currentColor;"></span>
-                        <span id="rain_status_text">No Rain</span>
+            <!-- COMPACT UNIFIED SINGLE-BOARD CONTAINER VIEW -->
+            <div id="compact_dashboard_board" class="compact-board" style="display: none;">
+                <div class="c-board-header">
+                    <div class="c-title">
+                        <i class="mdi mdi-weather-partly-cloudy" style="color: var(--primary); font-size: 1.4rem;"></i>
+                        <span>Weather Station</span>
+                        <span class="c-badge-ver">v<span id="c_val_ver">1.0.2</span></span>
+                    </div>
+                    <div class="c-header-badges">
+                        <span id="c_rain_badge" class="c-status-badge badge-clear">
+                            <i class="mdi mdi-weather-rainy"></i> <span id="c_rain_text">No Rain</span>
+                        </span>
+                        <span class="c-status-badge badge-info">
+                            <i class="mdi mdi-clock-outline"></i> <span id="c_val_time">--:--</span>
+                        </span>
                     </div>
                 </div>
-            </div>
 
-            <div class="panel">
-                <div class="panel-section">
-                    <h3>System Information</h3>
-                    <table class="info-table">
-                        <tr><td>Date/Time (GMT-0)</td><td><span id="sys_time">NTP Syncing...</span></td></tr>
-                        <tr><td>Wi-Fi SSID</td><td><span id="sys_ssid">--</span></td></tr>
-                        <tr><td>Signal RSSI</td><td><span id="sys_rssi">--</span></td></tr>
-                        <tr><td>IP Address</td><td><span id="sys_ip">--</span></td></tr>
-                        <tr><td>Uptime</td><td><span id="sys_uptime">--</span></td></tr>
-                        <tr><td>Total Hall Tips</td><td><span id="sys_tips">0</span></td></tr>
-                        <tr><td>Supply Voltage</td><td><span id="sys_vcc">--</span></td></tr>
-                        <tr><td>Free Memory</td><td><span id="sys_heap">--</span></td></tr>
-                    </table>
+                <div class="c-grid">
+                    <div class="c-tile">
+                        <div class="c-tile-icon" style="color: #ef4444;"><i class="mdi mdi-thermometer"></i></div>
+                        <div class="c-tile-content">
+                            <div class="c-tile-label">Temp</div>
+                            <div class="c-tile-val" id="c_val_temp">-- <span class="c-unit">°C</span></div>
+                        </div>
+                    </div>
+
+                    <div class="c-tile">
+                        <div class="c-tile-icon" style="color: #06b6d4;"><i class="mdi mdi-water-percent"></i></div>
+                        <div class="c-tile-content">
+                            <div class="c-tile-label">Humidity</div>
+                            <div class="c-tile-val" id="c_val_hum">-- <span class="c-unit">%</span></div>
+                        </div>
+                    </div>
+
+                    <div class="c-tile">
+                        <div class="c-tile-icon" style="color: #8b5cf6;"><i class="mdi mdi-gauge"></i></div>
+                        <div class="c-tile-content">
+                            <div class="c-tile-label">Pressure</div>
+                            <div class="c-tile-val" id="c_val_press">-- <span class="c-unit">hPa</span></div>
+                        </div>
+                    </div>
+
+                    <div class="c-tile">
+                        <div class="c-tile-icon" style="color: #eab308;"><i class="mdi mdi-white-balance-sunny"></i></div>
+                        <div class="c-tile-content">
+                            <div class="c-tile-label">Luminosity</div>
+                            <div class="c-tile-val" id="c_val_lux">-- <span class="c-unit">lx</span></div>
+                        </div>
+                    </div>
+
+                    <div class="c-tile c-span-2">
+                        <div class="c-tile-icon" style="color: #3b82f6;"><i class="mdi mdi-weather-windy"></i></div>
+                        <div class="c-tile-content">
+                            <div class="c-tile-label">Wind Speed & Gust</div>
+                            <div class="c-tile-val">
+                                <span id="c_val_wind_speed">-- km/h</span> 
+                                <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: normal; margin-left: 4px;" id="c_val_wind_gust">(Gust: --)</span>
+                            </div>
+                            <div class="c-tile-sub" id="c_val_wind_sub">-- m/s &bull; -- kt</div>
+                        </div>
+                    </div>
+
+                    <div class="c-tile c-span-2">
+                        <div class="c-tile-icon" style="color: #14b8a6;"><i class="mdi mdi-compass-outline"></i></div>
+                        <div class="c-tile-content">
+                            <div class="c-tile-label">Wind Direction</div>
+                            <div class="c-tile-val" id="c_val_wind_dir">--</div>
+                        </div>
+                    </div>
+
+                    <div class="c-tile c-span-2">
+                        <div class="c-tile-icon" style="color: #2563eb;"><i class="mdi mdi-weather-pouring"></i></div>
+                        <div class="c-tile-content">
+                            <div class="c-tile-label">Rain (1h / 24h / Total)</div>
+                            <div class="c-tile-val" style="font-size: 0.95rem;">
+                                <span id="c_val_rain_1h">0.00</span> | 
+                                <span id="c_val_rain_24h">0.00</span> | 
+                                <span id="c_val_rain_total">0.00</span> 
+                                <span class="c-unit" id="c_unit_rain">mm</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="c-tile c-span-2">
+                        <div class="c-tile-icon" style="color: #10b981;"><i class="mdi mdi-air-filter"></i></div>
+                        <div class="c-tile-content">
+                            <div class="c-tile-label">Air Quality (AQI / eCO2 / TVOC)</div>
+                            <div class="c-tile-val" style="font-size: 0.9rem;">
+                                AQI: <span id="c_val_aqi">--</span> | 
+                                <span id="c_val_eco2">--</span> ppm | 
+                                <span id="c_val_tvoc">--</span> ppb
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="c-board-footer">
+                    <div><i class="mdi mdi-wifi" style="color: var(--primary);"></i> <span id="c_val_ssid">--</span> (<span id="c_val_rssi">--</span>)</div>
+                    <div><i class="mdi mdi-ip-network" style="color: var(--primary);"></i> <span id="c_val_ip">--</span></div>
+                    <div><i class="mdi mdi-timer-outline" style="color: var(--primary);"></i> <span id="c_val_uptime">--</span></div>
                 </div>
             </div>
-
-
         </div>
 
         <!-- CONSOLE TAB -->
@@ -591,7 +873,7 @@ const char index_html[] PROGMEM = R"rawliteral(
             <div class="panel">
                 <form id="config_form" onsubmit="saveConfig(event)">
                     <div class="panel-section">
-                        <h3>General Configuration</h3>
+                        <h3><i class="mdi mdi-tune-vertical" style="color: var(--primary); margin-right: 6px;"></i> General Configuration</h3>
                         <div class="form-group">
                             <label for="conf_host">Hostname (mDNS):</label>
                             <input type="text" id="conf_host">
@@ -603,10 +885,17 @@ const char index_html[] PROGMEM = R"rawliteral(
                                 <option value="imperial">Imperial (&deg;F, mph, in, inHg)</option>
                             </select>
                         </div>
+                        <div class="form-group">
+                            <label for="conf_ui_mode">Dashboard Layout Mode:</label>
+                            <select id="conf_ui_mode" onchange="toggleUiMode(this.value)">
+                                <option value="classic">Classic (Spacious Cards)</option>
+                                <option value="compact">Compact (All-in-One High Density)</option>
+                            </select>
+                        </div>
                     </div>
 
                     <div class="panel-section">
-                        <h3>Rain Gauge Parameters</h3>
+                        <h3><i class="mdi mdi-weather-rainy" style="color: var(--primary); margin-right: 6px;"></i> Rain Gauge Parameters</h3>
                         <div class="form-group">
                             <label for="conf_pin">Sensor GPIO (A3144):</label>
                             <input type="number" id="conf_pin" min="0" max="39">
@@ -622,7 +911,7 @@ const char index_html[] PROGMEM = R"rawliteral(
                     </div>
 
                     <div class="panel-section">
-                        <h3>Environmental Sensor Parameters</h3>
+                        <h3><i class="mdi mdi-thermometer-lines" style="color: var(--primary); margin-right: 6px;"></i> Environmental Sensor Parameters</h3>
                         <div class="form-group">
                             <label for="conf_sda">I2C SDA Pin:</label>
                             <input type="number" id="conf_sda" min="0" max="39">
@@ -662,7 +951,7 @@ const char index_html[] PROGMEM = R"rawliteral(
                     </div>
 
                     <div class="panel-section">
-                        <h3>Anemometer (Wind) Parameters</h3>
+                        <h3><i class="mdi mdi-weather-windy" style="color: var(--primary); margin-right: 6px;"></i> Anemometer (Wind) Parameters</h3>
                         <div class="form-group">
                             <label for="conf_w_pin">Sensor GPIO:</label>
                             <input type="number" id="conf_w_pin" min="0" max="39">
@@ -723,7 +1012,7 @@ const char index_html[] PROGMEM = R"rawliteral(
                     </div>
 
                     <div class="panel-section">
-                        <h3>Luminosity Calibration (BH1750 behind PETG)</h3>
+                        <h3><i class="mdi mdi-white-balance-sunny" style="color: var(--primary); margin-right: 6px;"></i> Luminosity Calibration (BH1750 behind PETG)</h3>
                         <div class="form-group">
                             <label for="conf_lux_cal">Transmission Calibration Factor (0.01 - 1.0):</label>
                             <input type="number" id="conf_lux_cal" step="0.0001" min="0.01" max="1.0">
@@ -752,7 +1041,7 @@ const char index_html[] PROGMEM = R"rawliteral(
                     </div>
 
                     <div class="panel-section">
-                        <h3>Network Configuration</h3>
+                        <h3><i class="mdi mdi-wifi" style="color: var(--primary); margin-right: 6px;"></i> Network Configuration</h3>
                         <div class="form-group" style="flex-direction: row; justify-content: space-between;">
                             <label for="conf_dhcp">Use DHCP:</label>
                             <input type="checkbox" id="conf_dhcp" onchange="toggleDhcpFields(this.checked)">
@@ -784,7 +1073,7 @@ const char index_html[] PROGMEM = R"rawliteral(
                     </div>
 
                     <div class="panel-section">
-                        <h3>Crash Diagnostics</h3>
+                        <h3><i class="mdi mdi-bug-outline" style="color: var(--primary); margin-right: 6px;"></i> Crash Diagnostics</h3>
                         <div class="form-group" style="flex-direction: row; justify-content: space-between; align-items: center;">
                             <label for="conf_crash_opt">Send crash dump (no personal information will be sent):</label>
                             <input type="checkbox" id="conf_crash_opt" style="width: 20px; height: 20px; margin: 0;">
@@ -792,7 +1081,7 @@ const char index_html[] PROGMEM = R"rawliteral(
                     </div>
 
                     <div class="panel-section">
-                        <h3>MQTT Broker</h3>
+                        <h3><i class="mdi mdi-cloud-upload-outline" style="color: var(--primary); margin-right: 6px;"></i> MQTT Broker</h3>
                         <div class="form-group">
                             <label for="conf_mq">MQTT Server:</label>
                             <input type="text" id="conf_mq" placeholder="e.g. 192.168.1.50">
@@ -825,18 +1114,18 @@ const char index_html[] PROGMEM = R"rawliteral(
                     </div>
 
                     <div style="text-align: center; margin-top: 20px;">
-                        <button type="submit" class="btn" style="width: 100%; max-width: 300px;">Save & Apply</button>
+                        <button type="submit" class="btn" style="width: 100%; max-width: 300px;"><i class="mdi mdi-content-save"></i> Save & Apply</button>
                     </div>
                 </form>
             </div>
 
             <div class="panel">
                 <div class="panel-section">
-                    <h3>Firmware Update (OTA)</h3>
+                    <h3><i class="mdi mdi-cloud-download-outline" style="color: var(--primary); margin-right: 6px;"></i> Firmware Update (OTA)</h3>
                     <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 15px;">Select the compiled .bin file to update the weather station.</p>
                     <div style="display: flex; flex-direction: column; gap: 10px;">
                         <input type="file" id="ota_file" accept=".bin">
-                        <button class="btn btn-danger" style="margin-top: 5px;" onclick="uploadOta()">Start Update</button>
+                        <button class="btn btn-danger" style="margin-top: 5px;" onclick="uploadOta()"><i class="mdi mdi-upload"></i> Start Update</button>
                     </div>
                     <div class="progress-container" id="prg_container">
                         <div class="progress-bar" id="prg_bar"></div>
@@ -847,11 +1136,11 @@ const char index_html[] PROGMEM = R"rawliteral(
 
             <div class="panel">
                 <div class="panel-section">
-                    <h3>Backup & Restore Settings</h3>
+                    <h3><i class="mdi mdi-database-export-outline" style="color: var(--primary); margin-right: 6px;"></i> Backup & Restore Settings</h3>
                     <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 15px;">Save the current settings to a backup file, or upload a previously saved file to restore them.</p>
                     <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                        <button class="btn" onclick="backupConfig()">Download Backup</button>
-                        <button class="btn" onclick="document.getElementById('restoreFile').click()">Restore from File</button>
+                        <button class="btn" onclick="backupConfig()"><i class="mdi mdi-download"></i> Download Backup</button>
+                        <button class="btn" onclick="document.getElementById('restoreFile').click()"><i class="mdi mdi-upload"></i> Restore from File</button>
                         <input type="file" id="restoreFile" style="display: none;" accept=".json" onchange="restoreConfig(event)">
                     </div>
                 </div>
@@ -859,17 +1148,17 @@ const char index_html[] PROGMEM = R"rawliteral(
 
             <div class="panel">
                 <div class="panel-section">
-                    <h3>Reboot Device</h3>
+                    <h3><i class="mdi mdi-restart" style="color: var(--primary); margin-right: 6px;"></i> Reboot Device</h3>
                     <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 15px;">Restart the weather station to reload configurations and re-initialize all sensors.</p>
-                    <button class="btn" onclick="rebootDevice()">Reboot Device</button>
+                    <button class="btn" onclick="rebootDevice()"><i class="mdi mdi-restart"></i> Reboot Device</button>
                 </div>
             </div>
 
             <div class="panel" style="border-color: rgba(239, 68, 68, 0.3);">
                 <div class="panel-section">
-                    <h3 style="color: var(--danger);">Factory Reset</h3>
+                    <h3 style="color: var(--danger);"><i class="mdi mdi-alert-circle-outline" style="color: var(--danger); margin-right: 6px;"></i> Factory Reset</h3>
                     <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 15px;">Reset all saved configurations (Wi-Fi, MQTT, and calibration) and restart the ESP8266.</p>
-                    <button class="btn btn-danger" onclick="factoryReset()">Reset Device</button>
+                    <button class="btn btn-danger" onclick="factoryReset()"><i class="mdi mdi-alert"></i> Reset Device</button>
                 </div>
             </div>
         </div>
@@ -878,7 +1167,7 @@ const char index_html[] PROGMEM = R"rawliteral(
         <div id="info" class="tab-content">
             <div class="panel">
                 <div class="panel-section">
-                    <h3>Sensor Connection Diagram</h3>
+                    <h3><i class="mdi mdi-transit-connection-variant" style="color: var(--primary); margin-right: 6px;"></i> Sensor Connection Diagram</h3>
                     <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">
                         This table dynamically updates based on the GPIO pins configured in your Settings.
                     </p>
@@ -900,7 +1189,7 @@ const char index_html[] PROGMEM = R"rawliteral(
 
             <div class="panel" style="margin-top: 20px;">
                 <div class="panel-section">
-                    <h3>I2C Sensor Status</h3>
+                    <h3><i class="mdi mdi-chip-outline" style="color: var(--primary); margin-right: 6px;"></i> I2C Sensor Status</h3>
                     <table class="info-table">
                         <tr><td style="font-weight: 600;">AHT20/AHT21 (Humidity/Temp)</td><td style="font-family: monospace;">0x38</td><td><span id="sns_aht">--</span></td></tr>
                         <tr><td style="font-weight: 600;">BMP280 (Pressure/Temp)</td><td style="font-family: monospace;">0x76/0x77</td><td><span id="sns_bmp">--</span></td></tr>
@@ -913,7 +1202,7 @@ const char index_html[] PROGMEM = R"rawliteral(
 
             <div class="panel" style="margin-top: 20px;">
                 <div class="panel-section">
-                    <h3>REST API Reference</h3>
+                    <h3><i class="mdi mdi-api" style="color: var(--primary); margin-right: 6px;"></i> REST API Reference</h3>
                     <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;">
                         The weather station exposes a REST API that returns data in JSON format. You can integrate these endpoints into Home Assistant, Node-RED, or custom scripts.
                     </p>
@@ -1036,6 +1325,17 @@ const char index_html[] PROGMEM = R"rawliteral(
             return sectors[idx];
         }
 
+        function getAqiText(aqi) {
+            switch(aqi) {
+                case 1: return 'Excellent';
+                case 2: return 'Good';
+                case 3: return 'Moderate';
+                case 4: return 'Poor';
+                case 5: return 'Unhealthy';
+                default: return 'Unknown';
+            }
+        }
+
         function getAqiLabel(aqi) {
             switch(aqi) {
                 case 1: return '<span style="color: var(--success); font-weight: bold;">1 - Excellent</span>';
@@ -1044,6 +1344,20 @@ const char index_html[] PROGMEM = R"rawliteral(
                 case 4: return '<span style="color: #f97316; font-weight: bold;">4 - Poor</span>';
                 case 5: return '<span style="color: var(--danger); font-weight: bold;">5 - Unhealthy</span>';
                 default: return 'Unknown';
+            }
+        }
+
+        function toggleUiMode(mode) {
+            const classicGrid = document.getElementById('classic_dashboard_grid');
+            const compactBoard = document.getElementById('compact_dashboard_board');
+            if (classicGrid && compactBoard) {
+                if (mode === 'compact') {
+                    classicGrid.style.display = 'none';
+                    compactBoard.style.display = 'block';
+                } else {
+                    classicGrid.style.display = 'block';
+                    compactBoard.style.display = 'none';
+                }
             }
         }
 
@@ -1094,6 +1408,10 @@ const char index_html[] PROGMEM = R"rawliteral(
                     setSnsStatus('sns_ens', data.has_ens160);
                     setSnsStatus('sns_as5600', data.has_as5600);
                     setSnsStatus('sns_bh1750', data.has_bh1750);
+
+                    if (data.ui_compact !== undefined) {
+                        toggleUiMode(data.ui_compact ? 'compact' : 'classic');
+                    }
                     
                     const valTemp = document.getElementById('val_temp');
                     if (data.has_aht20 || data.has_bmp280) {
@@ -1125,7 +1443,7 @@ const char index_html[] PROGMEM = R"rawliteral(
                     const valEco2 = document.getElementById('val_eco2');
                     const valTvoc = document.getElementById('val_tvoc');
                     if (data.has_ens160) {
-                        valAqi.innerHTML = getAqiLabel(data.aqi);
+                        valAqi.innerHTML = `${data.aqi} <span class="card-unit">${getAqiLabel(data.aqi)}</span>`;
                         valEco2.innerHTML = `${data.eco2} <span class="card-unit">ppm</span>`;
                         valTvoc.innerHTML = `${data.tvoc} <span class="card-unit">ppb</span>`;
                     } else {
@@ -1178,6 +1496,115 @@ const char index_html[] PROGMEM = R"rawliteral(
                     } else {
                         badge.className = "status-badge badge-clear";
                         badgeText.innerText = "No Rain";
+                    }
+
+                    // Populate Compact Board elements
+                    if (document.getElementById('compact_dashboard_board')) {
+                        const cTemp = document.getElementById('c_val_temp');
+                        if (cTemp) {
+                            if (data.has_aht20 || data.has_bmp280) {
+                                const tVal = isImp ? (data.temp * 1.8 + 32.0) : data.temp;
+                                const tUnit = isImp ? '°F' : '°C';
+                                cTemp.innerHTML = `${tVal.toFixed(1)} <span class="c-unit">${tUnit}</span>`;
+                            } else {
+                                cTemp.innerHTML = '<span style="color: var(--danger); font-size: 0.85rem;">N/A</span>';
+                            }
+                        }
+
+                        const cHum = document.getElementById('c_val_hum');
+                        if (cHum) {
+                            if (data.has_aht20) {
+                                cHum.innerHTML = `${data.hum.toFixed(1)} <span class="c-unit">%</span>`;
+                            } else {
+                                cHum.innerHTML = '<span style="color: var(--danger); font-size: 0.85rem;">N/A</span>';
+                            }
+                        }
+
+                        const cPress = document.getElementById('c_val_press');
+                        if (cPress) {
+                            if (data.has_bmp280) {
+                                const pVal = isImp ? (data.press * 0.02953) : data.press;
+                                const pUnit = isImp ? 'inHg' : 'hPa';
+                                const pDec = isImp ? 2 : 1;
+                                cPress.innerHTML = `${pVal.toFixed(pDec)} <span class="c-unit">${pUnit}</span>`;
+                            } else {
+                                cPress.innerHTML = '<span style="color: var(--danger); font-size: 0.85rem;">N/A</span>';
+                            }
+                        }
+
+                        const cLux = document.getElementById('c_val_lux');
+                        if (cLux) {
+                            if (data.has_bh1750) {
+                                cLux.innerHTML = `${data.lux.toFixed(0)} <span class="c-unit">lx</span>`;
+                            } else {
+                                cLux.innerHTML = '<span style="color: var(--danger); font-size: 0.85rem;">N/A</span>';
+                            }
+                        }
+
+                        const cWSpd = document.getElementById('c_val_wind_speed');
+                        const cWGust = document.getElementById('c_val_wind_gust');
+                        const cWSub = document.getElementById('c_val_wind_sub');
+                        if (cWSpd && cWGust && cWSub) {
+                            cWSpd.innerHTML = `${wSpeed.toFixed(1)} <span class="c-unit">${wUnit}</span>`;
+                            cWGust.innerHTML = `(Gust: ${wGust.toFixed(1)})`;
+
+                            const ms = data.wind_speed_ms !== undefined ? data.wind_speed_ms : (data.wind_speed / 3.6);
+                            const kt = data.wind_speed_kt !== undefined ? data.wind_speed_kt : (data.wind_speed * 0.539957);
+                            cWSub.innerHTML = `${ms.toFixed(1)} m/s &bull; ${kt.toFixed(1)} kt`;
+                        }
+
+                        const cWDir = document.getElementById('c_val_wind_dir');
+                        if (cWDir) {
+                            if (data.has_as5600) {
+                                cWDir.innerHTML = `${data.wind_dir.toFixed(0)}&deg; <span class="c-unit" style="font-weight: bold;">${getWindCardinal(data.wind_dir)}</span>`;
+                            } else {
+                                cWDir.innerHTML = '<span style="color: var(--danger); font-size: 0.85rem;">N/A</span>';
+                            }
+                        }
+
+                        const cRain1h = document.getElementById('c_val_rain_1h');
+                        const cRain24h = document.getElementById('c_val_rain_24h');
+                        const cRainTot = document.getElementById('c_val_rain_total');
+                        const cRainUnit = document.getElementById('c_unit_rain');
+                        if (cRain1h && cRain24h && cRainTot && cRainUnit) {
+                            cRain1h.innerText = (data.hourly_rain * rMult).toFixed(2);
+                            cRain24h.innerText = (data.daily_rain * rMult).toFixed(2);
+                            cRainTot.innerText = (data.total_rain * rMult).toFixed(2);
+                            cRainUnit.innerText = rUnit;
+                        }
+
+                        const cAqi = document.getElementById('c_val_aqi');
+                        const cEco2 = document.getElementById('c_val_eco2');
+                        const cTvoc = document.getElementById('c_val_tvoc');
+                        if (cAqi && cEco2 && cTvoc) {
+                            if (data.has_ens160) {
+                                cAqi.innerHTML = `${data.aqi} <span style="font-size: 0.8rem; font-weight: bold;">(${getAqiText(data.aqi)})</span>`;
+                                cEco2.innerText = data.eco2;
+                                cTvoc.innerText = data.tvoc;
+                            } else {
+                                cAqi.innerText = '--';
+                                cEco2.innerText = '--';
+                                cTvoc.innerText = '--';
+                            }
+                        }
+
+                        const cRainBadge = document.getElementById('c_rain_badge');
+                        const cRainText = document.getElementById('c_rain_text');
+                        if (cRainBadge && cRainText) {
+                            if (data.is_raining) {
+                                cRainBadge.className = "c-status-badge badge-rain";
+                                cRainText.innerText = "Raining";
+                            } else {
+                                cRainBadge.className = "c-status-badge badge-clear";
+                                cRainText.innerText = "No Rain";
+                            }
+                        }
+
+                        if (document.getElementById('c_val_time')) document.getElementById('c_val_time').innerText = data.time ? data.time.substring(11, 19) : '--:--';
+                        if (document.getElementById('c_val_ssid')) document.getElementById('c_val_ssid').innerText = data.ssid || 'WiFi';
+                        if (document.getElementById('c_val_rssi')) document.getElementById('c_val_rssi').innerText = data.rssi || '';
+                        if (document.getElementById('c_val_ip')) document.getElementById('c_val_ip').innerText = data.ip || '';
+                        if (document.getElementById('c_val_uptime')) document.getElementById('c_val_uptime').innerText = data.uptime || '';
                     }
                 })
                 .catch(err => console.error("Error updating status:", err));
@@ -1279,11 +1706,16 @@ const char index_html[] PROGMEM = R"rawliteral(
                     if (document.getElementById('conf_units')) {
                         document.getElementById('conf_units').value = c.use_imperial ? 'imperial' : 'metric';
                     }
+                    if (document.getElementById('conf_ui_mode')) {
+                        const mode = c.ui_compact ? 'compact' : 'classic';
+                        document.getElementById('conf_ui_mode').value = mode;
+                        toggleUiMode(mode);
+                    }
                     document.getElementById('conf_pin').value = c.pin;
                     document.getElementById('conf_cal').value = c.calibration;
                     document.getElementById('conf_deb').value = c.debounce;
                     document.getElementById('conf_dhcp').checked = c.dhcp;
-            document.getElementById('conf_crash_opt').checked = (c.crash_opt !== false);
+                    document.getElementById('conf_crash_opt').checked = (c.crash_opt !== false);
 
                     document.getElementById('conf_sda').value = c.sda;
                     document.getElementById('conf_scl').value = c.scl;
@@ -1361,11 +1793,12 @@ const char index_html[] PROGMEM = R"rawliteral(
             const config = {
                 hostname: document.getElementById('conf_host').value,
                 use_imperial: document.getElementById('conf_units') ? (document.getElementById('conf_units').value === 'imperial') : false,
+                ui_compact: document.getElementById('conf_ui_mode') ? (document.getElementById('conf_ui_mode').value === 'compact') : false,
                 pin: parseInt(document.getElementById('conf_pin').value),
                 calibration: parseFloat(document.getElementById('conf_cal').value),
                 debounce: parseInt(document.getElementById('conf_deb').value),
                 dhcp: document.getElementById('conf_dhcp').checked,
-            crash_opt: document.getElementById('conf_crash_opt').checked,
+                crash_opt: document.getElementById('conf_crash_opt').checked,
                 sda: parseInt(document.getElementById('conf_sda').value),
                 scl: parseInt(document.getElementById('conf_scl').value),
                 i2c_clk: parseInt(document.getElementById('conf_i2c_clk').value),
@@ -1908,6 +2341,7 @@ void setup_web_server() {
     server.on("/api/status", HTTP_GET, []() {
         JsonDocument doc;
         doc["use_imperial"] = use_imperial;
+        doc["ui_compact"] = ui_compact;
         doc["tips"] = total_bucket_tips;
         doc["total_rain"] = total_rain_mm;
         doc["hourly_rain"] = rolling_rain_hour;
@@ -1994,6 +2428,7 @@ void setup_web_server() {
         doc["fw_version"] = FIRMWARE_VERSION;
         doc["hostname"] = hostname;
         doc["use_imperial"] = use_imperial;
+        doc["ui_compact"] = ui_compact;
         doc["pin"] = rain_sensor_pin;
         doc["calibration"] = rain_calibration;
         doc["debounce"] = rain_debounce_ms;
@@ -2055,6 +2490,7 @@ void setup_web_server() {
         doc["fw_version"] = FIRMWARE_VERSION;
         doc["hostname"] = hostname;
         doc["use_imperial"] = use_imperial;
+        doc["ui_compact"] = ui_compact;
         doc["pin"] = rain_sensor_pin;
         doc["calibration"] = rain_calibration;
         doc["debounce"] = rain_debounce_ms;
@@ -2126,6 +2562,11 @@ void setup_web_server() {
                 if (doc["use_imperial"].is<bool>()) {
                     use_imperial = doc["use_imperial"].as<bool>();
                     local_prefs.putBool("use_imp", use_imperial);
+                }
+
+                if (doc["ui_compact"].is<bool>()) {
+                    ui_compact = doc["ui_compact"].as<bool>();
+                    local_prefs.putBool("ui_comp", ui_compact);
                 }
 
                 rain_sensor_pin = doc["pin"] | 14;

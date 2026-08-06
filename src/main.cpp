@@ -305,6 +305,7 @@ unsigned long last_minute_update = 0;
 String hostname = "WeatherStation";
 bool use_dhcp = false;
 bool use_imperial = false;
+bool ui_compact = false;
 String wifi_ssid = "";
 String wifi_pass = "";
 String wifi_ip = "";
@@ -478,6 +479,7 @@ void load_settings() {
     rain_debounce_ms  = prefs.getInt("debounce", 300);
     use_dhcp          = prefs.getBool("dhcp", false);
     use_imperial      = prefs.getBool("use_imp", false);
+    ui_compact        = prefs.getBool("ui_comp", false);
     wifi_ssid         = prefs.getString("wifi_ssid", "");
     wifi_pass         = prefs.getString("wifi_pass", "");
     wifi_ip           = prefs.getString("ip", "");

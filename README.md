@@ -1,6 +1,12 @@
-# DIY Smart Weather Station (v1.0.1)
+# DIY Smart Weather Station (v1.0.2)
 
-A feature-rich, high-precision ESP8266-based Smart Weather Station with a modern responsive Web Dashboard, dynamic sensor detection, customizable moving-average filters, Metric & Imperial unit system support, Home Assistant MQTT Auto-Discovery, full backup/restore capability, and hardware factory reset logic.
+A feature-rich, high-precision ESP8266-based Smart Weather Station with a modern responsive Web Dashboard, single-board mobile Compact UI, Material Design Icons (MDI), dynamic sensor detection, customizable moving-average filters, Metric & Imperial unit system support, Home Assistant MQTT Auto-Discovery, full backup/restore capability, and hardware factory reset logic.
+---
+
+> [!NOTE]
+> This project was made in vibe coding using Antigravity/Gemini.
+> 3D models were designed manually using Fusion360.
+
 ---
 
 ## 📋 Table of Contents
@@ -26,6 +32,10 @@ A feature-rich, high-precision ESP8266-based Smart Weather Station with a modern
 ## ✨ Features
 
 - **Environmental Monitoring**: Temperature, Relative Humidity, Barometric Pressure (sea-level compensated), Air Quality (TVOC, eCO2, AQI), Luminosity (lux), Wind Speed, Wind Gust, Wind Direction, and Rain Gauge (hourly, 24h rolling, and total).
+- **Single-Board Mobile Compact UI**:
+  - Unified single-container widget board (`Compact UI`) designed to fit **100% of all weather metrics on a single mobile screen without vertical scrolling**.
+  - Selectable between **Classic (Spacious Cards)** and **Compact (Single-Board All-in-One)** in Settings. Saved in NVS flash memory.
+- **Material Design Icons (MDI)**: Integrated crisp MDI icons across navigation tabs, dashboard cards, system tables, settings section headers, and action buttons.
 - **Unit System Support (Metric & Imperial)**:
   - Toggle between **Metric** (°C, km/h, mm, hPa) and **Imperial** (°F, mph, in, inHg) in Settings.
   - Multi-unit wind speed display including **m/s (meters/sec)** and **kt (knots)** on Dashboard and MQTT.
