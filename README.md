@@ -97,6 +97,10 @@ Connect the **SDA** and **SCL** pins of all I2C sensors in parallel to the ESP82
 
 **Note:** On the ANS160 sensor, cut the humidity sensor tracks to avoid conflict with the one on the BMP280 sensor (they are on the same address)
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/byte4geek/weatherstation/refs/heads/main/images/humidity_sens_excluion.jpg" alt="Humidity Sensor Exclusion" width="50%">
+</p>
+
 ### Pulse / Interrupt Sensors
 
 | Sensor Signal | ESP8266 Pin | Internal Pull-Up | Trigger Mode |
