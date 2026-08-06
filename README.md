@@ -1,6 +1,6 @@
-# DIY Smart Weather Station (v1.0.0)
+# DIY Smart Weather Station (v1.0.1)
 
-A feature-rich, high-precision ESP8266-based Smart Weather Station with a modern responsive Web Dashboard, dynamic sensor detection, customizable moving-average filters, Home Assistant MQTT Auto-Discovery, full backup/restore capability, and hardware factory reset logic.
+A feature-rich, high-precision ESP8266-based Smart Weather Station with a modern responsive Web Dashboard, dynamic sensor detection, customizable moving-average filters, Metric & Imperial unit system support, Home Assistant MQTT Auto-Discovery, full backup/restore capability, and hardware factory reset logic.
 ---
 
 ## 📋 Table of Contents
@@ -26,6 +26,10 @@ A feature-rich, high-precision ESP8266-based Smart Weather Station with a modern
 ## ✨ Features
 
 - **Environmental Monitoring**: Temperature, Relative Humidity, Barometric Pressure (sea-level compensated), Air Quality (TVOC, eCO2, AQI), Luminosity (lux), Wind Speed, Wind Gust, Wind Direction, and Rain Gauge (hourly, 24h rolling, and total).
+- **Unit System Support (Metric & Imperial)**:
+  - Toggle between **Metric** (°C, km/h, mm, hPa) and **Imperial** (°F, mph, in, inHg) in Settings.
+  - Multi-unit wind speed display including **m/s (meters/sec)** and **kt (knots)** on Dashboard and MQTT.
+  - Saved in NVS flash memory and included in single-click backup/restore.
 - **Independent Dual-Timer Engine**:
   - Fast, dedicated timer for Anemometer pulse processing (independent of I2C read cycle).
   - Configurable I2C sensor read cycle for environmental data.
@@ -44,7 +48,7 @@ A feature-rich, high-precision ESP8266-based Smart Weather Station with a modern
 - **Home Assistant Integration**:
   - Native MQTT Auto-Discovery (`homeassistant/sensor/...`).
   - Automatic entity creation in Home Assistant without manual YAML editing.
-- **Backup & Restore**: Single-click JSON export/import including full network, sensor, and MQTT configurations.
+- **Backup & Restore**: Single-click JSON export/import including full network, sensor, unit preferences, and MQTT configurations.
 - **Hardware Safety & Diagnostics**: 10-second hold on FLASH button (GPIO 0) for NVS memory wipe / factory reset.
 
 ---

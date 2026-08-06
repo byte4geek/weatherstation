@@ -304,6 +304,7 @@ unsigned long last_minute_update = 0;
 
 String hostname = "WeatherStation";
 bool use_dhcp = false;
+bool use_imperial = false;
 String wifi_ssid = "";
 String wifi_pass = "";
 String wifi_ip = "";
@@ -328,6 +329,30 @@ String dns_secondary = "";
 String ntp_server = "pool.ntp.org";
 
 Preferences prefs;
+
+void update_rain_rolling_totals() {
+    uint32_t hour_tips = 0;
+    uint32_t day_tips = 0;
+    uint32_t five_min_tips = 0;
+
+    for (int i = 0; i < 60; i++) {
+        int idx = (current_minute_index - i + HISTORY_MINUTES) % HISTORY_MINUTES;
+        hour_tips += rain_history[idx];
+    }
+
+    for (int i = 0; i < HISTORY_MINUTES; i++) {
+        day_tips += rain_history[i];
+    }
+
+    for (int i = 0; i < 5; i++) {
+        int idx = (current_minute_index - i + HISTORY_MINUTES) % HISTORY_MINUTES;
+        five_min_tips += rain_history[idx];
+    }
+
+    rolling_rain_hour = hour_tips * rain_calibration;
+    rolling_rain_day = day_tips * rain_calibration;
+    is_raining = (five_min_tips > 0);
+}
 
 // --- Environmental sensors definition ---
 bool has_aht20 = false;
@@ -452,6 +477,7 @@ void load_settings() {
     rain_calibration  = prefs.getFloat("cal", 0.6314f);
     rain_debounce_ms  = prefs.getInt("debounce", 300);
     use_dhcp          = prefs.getBool("dhcp", false);
+    use_imperial      = prefs.getBool("use_imp", false);
     wifi_ssid         = prefs.getString("wifi_ssid", "");
     wifi_pass         = prefs.getString("wifi_pass", "");
     wifi_ip           = prefs.getString("ip", "");

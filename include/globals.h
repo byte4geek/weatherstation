@@ -6,7 +6,7 @@
 #include <PubSubClient.h>
 
 // --- Firmware Version ---
-#define FIRMWARE_VERSION "1.0.0"
+#define FIRMWARE_VERSION "1.0.1"
 
 // --- RAIN DATA CONFIGURATION ---
 extern volatile uint32_t total_bucket_tips;
@@ -52,6 +52,8 @@ extern unsigned long last_minute_update;
 // --- DYNAMIC SYSTEM CONFIGURATION ---
 extern String hostname;
 extern bool use_dhcp;
+extern bool use_imperial;
+
 extern String wifi_ssid;
 extern String wifi_pass;
 extern String wifi_ip;

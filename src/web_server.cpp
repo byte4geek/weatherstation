@@ -505,10 +505,12 @@ const char index_html[] PROGMEM = R"rawliteral(
                 <div class="card primary">
                     <div class="card-title">Wind Speed</div>
                     <div class="card-value" id="val_wind_speed">-- <span class="card-unit">km/h</span></div>
+                    <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;" id="val_wind_speed_sub">-- m/s &bull; -- kt</div>
                 </div>
                 <div class="card primary">
                     <div class="card-title">Max Gust (Today)</div>
                     <div class="card-value" id="val_wind_gust">-- <span class="card-unit">km/h</span></div>
+                    <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;" id="val_wind_gust_sub">-- m/s &bull; -- kt</div>
                 </div>
                 <div class="card primary">
                     <div class="card-title">Wind Direction</div>
@@ -523,15 +525,15 @@ const char index_html[] PROGMEM = R"rawliteral(
             <div class="grid">
                 <div class="card primary">
                     <div class="card-title">Last Hour</div>
-                    <div class="card-value"><span id="val_hour">0.00</span> <span class="card-unit">mm</span></div>
+                    <div class="card-value"><span id="val_hour">0.00</span> <span class="card-unit" id="unit_hour">mm</span></div>
                 </div>
                 <div class="card primary">
                     <div class="card-title">Last 24 Hours</div>
-                    <div class="card-value"><span id="val_day">0.00</span> <span class="card-unit">mm</span></div>
+                    <div class="card-value"><span id="val_day">0.00</span> <span class="card-unit" id="unit_day">mm</span></div>
                 </div>
                 <div class="card success">
                     <div class="card-title">Total Rain</div>
-                    <div class="card-value"><span id="val_total">0.00</span> <span class="card-unit">mm</span></div>
+                    <div class="card-value"><span id="val_total">0.00</span> <span class="card-unit" id="unit_total">mm</span></div>
                     <div style="margin-top: 10px;">
                         <button class="btn btn-sec" style="font-size: 0.8rem; padding: 6px 12px; border-radius: 6px;" onclick="clearCounters()">Reset</button>
                     </div>
@@ -593,6 +595,13 @@ const char index_html[] PROGMEM = R"rawliteral(
                         <div class="form-group">
                             <label for="conf_host">Hostname (mDNS):</label>
                             <input type="text" id="conf_host">
+                        </div>
+                        <div class="form-group">
+                            <label for="conf_units">Unit System:</label>
+                            <select id="conf_units">
+                                <option value="metric">Metric (&deg;C, km/h, mm, hPa)</option>
+                                <option value="imperial">Imperial (&deg;F, mph, in, inHg)</option>
+                            </select>
                         </div>
                     </div>
 
@@ -1042,9 +1051,17 @@ const char index_html[] PROGMEM = R"rawliteral(
             fetch('/api/status')
                 .then(res => res.json())
                 .then(data => {
-                    document.getElementById('val_hour').innerText = data.hourly_rain.toFixed(2);
-                    document.getElementById('val_day').innerText = data.daily_rain.toFixed(2);
-                    document.getElementById('val_total').innerText = data.total_rain.toFixed(2);
+                    const isImp = !!data.use_imperial;
+                    const rMult = isImp ? (1.0 / 25.4) : 1.0;
+                    const rUnit = isImp ? 'in' : 'mm';
+
+                    document.getElementById('val_hour').innerText = (data.hourly_rain * rMult).toFixed(2);
+                    document.getElementById('val_day').innerText = (data.daily_rain * rMult).toFixed(2);
+                    document.getElementById('val_total').innerText = (data.total_rain * rMult).toFixed(2);
+                    if (document.getElementById('unit_hour')) document.getElementById('unit_hour').innerText = rUnit;
+                    if (document.getElementById('unit_day')) document.getElementById('unit_day').innerText = rUnit;
+                    if (document.getElementById('unit_total')) document.getElementById('unit_total').innerText = rUnit;
+
                     document.getElementById('sys_time').innerText = data.time || 'N/A';
                     document.getElementById('sys_tips').innerText = data.tips;
                     document.getElementById('sys_ssid').innerText = data.ssid || 'N/A';
@@ -1080,7 +1097,9 @@ const char index_html[] PROGMEM = R"rawliteral(
                     
                     const valTemp = document.getElementById('val_temp');
                     if (data.has_aht20 || data.has_bmp280) {
-                        valTemp.innerHTML = `${data.temp.toFixed(1)} <span class="card-unit">°C</span>`;
+                        const tVal = isImp ? (data.temp * 1.8 + 32.0) : data.temp;
+                        const tUnit = isImp ? '°F' : '°C';
+                        valTemp.innerHTML = `${tVal.toFixed(1)} <span class="card-unit">${tUnit}</span>`;
                     } else {
                         valTemp.innerHTML = '<span style="color: var(--danger); font-size: 1rem; font-weight: bold;">Sensor not found</span>';
                     }
@@ -1094,7 +1113,10 @@ const char index_html[] PROGMEM = R"rawliteral(
 
                     const valPress = document.getElementById('val_press');
                     if (data.has_bmp280) {
-                        valPress.innerHTML = `${data.press.toFixed(1)} <span class="card-unit">hPa</span>`;
+                        const pVal = isImp ? (data.press * 0.02953) : data.press;
+                        const pUnit = isImp ? 'inHg' : 'hPa';
+                        const pDec = isImp ? 2 : 1;
+                        valPress.innerHTML = `${pVal.toFixed(pDec)} <span class="card-unit">${pUnit}</span>`;
                     } else {
                         valPress.innerHTML = '<span style="color: var(--danger); font-size: 1rem; font-weight: bold;">Sensor not found</span>';
                     }
@@ -1112,8 +1134,26 @@ const char index_html[] PROGMEM = R"rawliteral(
                         valTvoc.innerHTML = '<span style="color: var(--danger); font-size: 1rem; font-weight: bold;">Sensor not found</span>';
                     }
 
-                    document.getElementById('val_wind_speed').innerHTML = `${data.wind_speed.toFixed(1)} <span class="card-unit">km/h</span>`;
-                    document.getElementById('val_wind_gust').innerHTML = `${data.wind_gust.toFixed(1)} <span class="card-unit">km/h</span>`;
+                    const wSpeed = isImp ? (data.wind_speed_mph || (data.wind_speed * 0.621371)) : data.wind_speed;
+                    const wGust  = isImp ? (data.wind_gust_mph  || (data.wind_gust  * 0.621371)) : data.wind_gust;
+                    const wUnit  = isImp ? 'mph' : 'km/h';
+
+                    document.getElementById('val_wind_speed').innerHTML = `${wSpeed.toFixed(1)} <span class="card-unit">${wUnit}</span>`;
+                    document.getElementById('val_wind_gust').innerHTML = `${wGust.toFixed(1)} <span class="card-unit">${wUnit}</span>`;
+
+                    const subSpeed = document.getElementById('val_wind_speed_sub');
+                    if (subSpeed) {
+                        const ms = data.wind_speed_ms !== undefined ? data.wind_speed_ms : (data.wind_speed / 3.6);
+                        const kt = data.wind_speed_kt !== undefined ? data.wind_speed_kt : (data.wind_speed * 0.539957);
+                        subSpeed.innerHTML = `${ms.toFixed(1)} m/s &bull; ${kt.toFixed(1)} kt`;
+                    }
+
+                    const subGust = document.getElementById('val_wind_gust_sub');
+                    if (subGust) {
+                        const ms = data.wind_gust_ms !== undefined ? data.wind_gust_ms : (data.wind_gust / 3.6);
+                        const kt = data.wind_gust_kt !== undefined ? data.wind_gust_kt : (data.wind_gust * 0.539957);
+                        subGust.innerHTML = `${ms.toFixed(1)} m/s &bull; ${kt.toFixed(1)} kt`;
+                    }
 
                     const valWindDir = document.getElementById('val_wind_dir');
                     if (data.has_as5600) {
@@ -1236,6 +1276,9 @@ const char index_html[] PROGMEM = R"rawliteral(
                 .then(c => {
                     populateWiringTable(c);
                     document.getElementById('conf_host').value = c.hostname;
+                    if (document.getElementById('conf_units')) {
+                        document.getElementById('conf_units').value = c.use_imperial ? 'imperial' : 'metric';
+                    }
                     document.getElementById('conf_pin').value = c.pin;
                     document.getElementById('conf_cal').value = c.calibration;
                     document.getElementById('conf_deb').value = c.debounce;
@@ -1317,6 +1360,7 @@ const char index_html[] PROGMEM = R"rawliteral(
             event.preventDefault();
             const config = {
                 hostname: document.getElementById('conf_host').value,
+                use_imperial: document.getElementById('conf_units') ? (document.getElementById('conf_units').value === 'imperial') : false,
                 pin: parseInt(document.getElementById('conf_pin').value),
                 calibration: parseFloat(document.getElementById('conf_cal').value),
                 debounce: parseInt(document.getElementById('conf_deb').value),
@@ -1863,6 +1907,7 @@ void setup_web_server() {
 
     server.on("/api/status", HTTP_GET, []() {
         JsonDocument doc;
+        doc["use_imperial"] = use_imperial;
         doc["tips"] = total_bucket_tips;
         doc["total_rain"] = total_rain_mm;
         doc["hourly_rain"] = rolling_rain_hour;
@@ -1871,6 +1916,12 @@ void setup_web_server() {
         
         doc["wind_speed"] = wind_speed_kmh;
         doc["wind_gust"] = wind_gust_kmh;
+        doc["wind_speed_ms"] = wind_speed_kmh / 3.6f;
+        doc["wind_speed_kt"] = wind_speed_kmh * 0.539957f;
+        doc["wind_speed_mph"] = wind_speed_kmh * 0.621371f;
+        doc["wind_gust_ms"] = wind_gust_kmh / 3.6f;
+        doc["wind_gust_kt"] = wind_gust_kmh * 0.539957f;
+        doc["wind_gust_mph"] = wind_gust_kmh * 0.621371f;
         
         doc["has_aht20"] = has_aht20;
         doc["has_bmp280"] = has_bmp280;
@@ -1942,11 +1993,12 @@ void setup_web_server() {
         JsonDocument doc;
         doc["fw_version"] = FIRMWARE_VERSION;
         doc["hostname"] = hostname;
+        doc["use_imperial"] = use_imperial;
         doc["pin"] = rain_sensor_pin;
         doc["calibration"] = rain_calibration;
         doc["debounce"] = rain_debounce_ms;
         doc["dhcp"] = use_dhcp;
-    doc["crash_opt"] = opt_in_crash_dump;
+        doc["crash_opt"] = opt_in_crash_dump;
         
         doc["sda"] = i2c_sda_pin;
         doc["scl"] = i2c_scl_pin;
@@ -1970,8 +2022,6 @@ void setup_web_server() {
         doc["mqtt_int"] = mqtt_publish_interval_s;
         doc["sens_int"] = sensor_read_interval_s;
         doc["mqtt_dec"] = mqtt_decimals;
-
-
 
         prefs.begin("weather", true);
         if(use_dhcp) {
@@ -2004,6 +2054,7 @@ void setup_web_server() {
         JsonDocument doc;
         doc["fw_version"] = FIRMWARE_VERSION;
         doc["hostname"] = hostname;
+        doc["use_imperial"] = use_imperial;
         doc["pin"] = rain_sensor_pin;
         doc["calibration"] = rain_calibration;
         doc["debounce"] = rain_debounce_ms;
@@ -2032,7 +2083,6 @@ void setup_web_server() {
         doc["mqtt_int"] = mqtt_publish_interval_s;
         doc["sens_int"] = sensor_read_interval_s;
         doc["mqtt_dec"] = mqtt_decimals;
-
 
         Preferences local_prefs;
         local_prefs.begin("weather", true);
@@ -2072,6 +2122,11 @@ void setup_web_server() {
                 String new_host = doc["hostname"] | "WeatherStation";
                 local_prefs.putString("hostname", new_host);
                 hostname = new_host;
+
+                if (doc["use_imperial"].is<bool>()) {
+                    use_imperial = doc["use_imperial"].as<bool>();
+                    local_prefs.putBool("use_imp", use_imperial);
+                }
 
                 rain_sensor_pin = doc["pin"] | 14;
                 rain_calibration = doc["calibration"] | 0.6314f;

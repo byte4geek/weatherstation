@@ -71,6 +71,11 @@ void publish_ha_sensor(const char* sensor_name, const char* label, const char* u
 void publish_ha_discovery() {
     app_log("Publishing Home Assistant MQTT Autodiscovery config...");
     
+    String t_unit = use_imperial ? "°F" : "°C";
+    String p_unit = use_imperial ? "inHg" : "hPa";
+    String r_unit = use_imperial ? "in" : "mm";
+    String w_unit = use_imperial ? "mph" : "km/h";
+
     // System sensors (using safe/standard classes)
     publish_ha_sensor("uptime", "Uptime", "s", "duration", "{{ value_json.uptime }}");
     publish_ha_sensor("rssi", "RSSI", "dBm", "signal_strength", "{{ value_json.rssi }}");
@@ -78,13 +83,13 @@ void publish_ha_discovery() {
     
     // Environmental (using safe/standard classes)
     if (has_aht20 || has_bmp280) {
-        publish_ha_sensor("temperature", "Temperature", "°C", "temperature", "{{ value_json.temperature }}");
+        publish_ha_sensor("temperature", "Temperature", t_unit.c_str(), "temperature", "{{ value_json.temperature }}");
     }
     if (has_aht20) {
         publish_ha_sensor("humidity", "Humidity", "%", "humidity", "{{ value_json.humidity }}");
     }
     if (has_bmp280) {
-        publish_ha_sensor("pressure", "Pressure", "hPa", "pressure", "{{ value_json.pressure }}");
+        publish_ha_sensor("pressure", "Pressure", p_unit.c_str(), "pressure", "{{ value_json.pressure }}");
     }
     
     // ENS160 Air Quality (no device class for compatibility)
@@ -100,16 +105,22 @@ void publish_ha_discovery() {
     }
     
     // Wind (no device class for compatibility)
-    publish_ha_sensor("wind_speed", "Wind Speed", "km/h", "", "{{ value_json.wind_speed }}");
-    publish_ha_sensor("wind_gust", "Wind Gust", "km/h", "", "{{ value_json.wind_gust }}");
+    publish_ha_sensor("wind_speed", "Wind Speed", w_unit.c_str(), "", "{{ value_json.wind_speed }}");
+    publish_ha_sensor("wind_speed_ms", "Wind Speed (m/s)", "m/s", "", "{{ value_json.wind_speed_ms }}");
+    publish_ha_sensor("wind_speed_kt", "Wind Speed (knots)", "kt", "", "{{ value_json.wind_speed_kt }}");
+
+    publish_ha_sensor("wind_gust", "Wind Gust", w_unit.c_str(), "", "{{ value_json.wind_gust }}");
+    publish_ha_sensor("wind_gust_ms", "Wind Gust (m/s)", "m/s", "", "{{ value_json.wind_gust_ms }}");
+    publish_ha_sensor("wind_gust_kt", "Wind Gust (knots)", "kt", "", "{{ value_json.wind_gust_kt }}");
+
     if (has_as5600) {
         publish_ha_sensor("wind_direction", "Wind Direction", "°", "", "{{ value_json.wind_direction }}");
     }
     
     // Rain (no device class for compatibility)
-    publish_ha_sensor("total_rain", "Total Rain", "mm", "", "{{ value_json.total_rain_mm }}");
-    publish_ha_sensor("hourly_rain", "Hourly Rain", "mm", "", "{{ value_json.hourly_rain_mm }}");
-    publish_ha_sensor("daily_rain", "Daily Rain", "mm", "", "{{ value_json.daily_rain_mm }}");
+    publish_ha_sensor("total_rain", "Total Rain", r_unit.c_str(), "", "{{ value_json.total_rain_mm }}");
+    publish_ha_sensor("hourly_rain", "Hourly Rain", r_unit.c_str(), "", "{{ value_json.hourly_rain_mm }}");
+    publish_ha_sensor("daily_rain", "Daily Rain", r_unit.c_str(), "", "{{ value_json.daily_rain_mm }}");
     
     // Raining binary sensor (using safe/standard classes)
     publish_ha_sensor("is_raining", "Is Raining", "", "moisture", "{{ 'ON' if value_json.is_raining else 'OFF' }}", "binary_sensor");
@@ -176,19 +187,24 @@ void handle_mqtt() {
 void publish_weather_data() {
     if (!mqttClient.connected()) return;
 
+    float r_mult = use_imperial ? (1.0f / 25.4f) : 1.0f;
+    float w_mult = use_imperial ? 0.621371f : 1.0f;
+
     JsonDocument doc;
+    doc["use_imperial"] = use_imperial;
     doc["uptime"] = millis() / 1000;
     doc["heap"] = ESP.getFreeHeap();
     doc["tips"] = total_bucket_tips;
-    doc["total_rain_mm"] = serialized(String(total_rain_mm, mqtt_decimals));
-    doc["hourly_rain_mm"] = serialized(String(rolling_rain_hour, mqtt_decimals));
-    doc["daily_rain_mm"] = serialized(String(rolling_rain_day, mqtt_decimals));
+    doc["total_rain_mm"] = serialized(String(total_rain_mm * r_mult, mqtt_decimals));
+    doc["hourly_rain_mm"] = serialized(String(rolling_rain_hour * r_mult, mqtt_decimals));
+    doc["daily_rain_mm"] = serialized(String(rolling_rain_day * r_mult, mqtt_decimals));
     doc["is_raining"] = is_raining;
     doc["rssi"] = WiFi.RSSI();
     doc["ip"] = WiFi.localIP().toString();
 
     if (has_aht20 || has_bmp280) {
-        doc["temperature"] = serialized(String(temperature_c, mqtt_decimals));
+        float temp_val = use_imperial ? (temperature_c * 1.8f + 32.0f) : temperature_c;
+        doc["temperature"] = serialized(String(temp_val, mqtt_decimals));
     } else {
         doc["temperature"] = nullptr;
     }
@@ -198,7 +214,8 @@ void publish_weather_data() {
         doc["humidity"] = nullptr;
     }
     if (has_bmp280) {
-        doc["pressure"] = serialized(String(pressure_hpa, mqtt_decimals));
+        float press_val = use_imperial ? (pressure_hpa * 0.02953f) : pressure_hpa;
+        doc["pressure"] = serialized(String(press_val, mqtt_decimals));
     } else {
         doc["pressure"] = nullptr;
     }
@@ -213,8 +230,13 @@ void publish_weather_data() {
         doc["aqi"] = nullptr;
     }
 
-    doc["wind_speed"] = serialized(String(wind_speed_kmh, mqtt_decimals));
-    doc["wind_gust"] = serialized(String(wind_gust_kmh, mqtt_decimals));
+    doc["wind_speed"] = serialized(String(wind_speed_kmh * w_mult, mqtt_decimals));
+    doc["wind_speed_ms"] = serialized(String(wind_speed_kmh / 3.6f, mqtt_decimals));
+    doc["wind_speed_kt"] = serialized(String(wind_speed_kmh * 0.539957f, mqtt_decimals));
+
+    doc["wind_gust"] = serialized(String(wind_gust_kmh * w_mult, mqtt_decimals));
+    doc["wind_gust_ms"] = serialized(String(wind_gust_kmh / 3.6f, mqtt_decimals));
+    doc["wind_gust_kt"] = serialized(String(wind_gust_kmh * 0.539957f, mqtt_decimals));
     if (has_as5600) {
         doc["wind_direction"] = serialized(String(wind_dir_deg, mqtt_decimals));
     } else {
