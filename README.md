@@ -91,6 +91,10 @@ Connect the **SDA** and **SCL** pins of all I2C sensors in parallel to the ESP82
 | **AS5600** | 3.3V | GND | GPIO 4 (D2) | GPIO 5 (D1) | Address `0x36` |
 | **BH1750** | 3.3V | GND | GPIO 4 (D2) | GPIO 5 (D1) | Address `0x23` |
 
+**Note:** On the pressure sensor, remove the 2 resistors on SDA and SCL because when too many sensors are placed in parallel, the value of these resistors drops too much.
+
+**Note:** On the ANS160 sensor, cut the humidity sensor tracks to avoid conflict with the one on the BMP280 sensor (they are on the same address)
+
 ### Pulse / Interrupt Sensors
 
 | Sensor Signal | ESP8266 Pin | Internal Pull-Up | Trigger Mode |
