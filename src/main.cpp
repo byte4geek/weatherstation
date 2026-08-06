@@ -328,6 +328,15 @@ int mqtt_decimals = 1;
 String dns_primary = "";
 String dns_secondary = "";
 String ntp_server = "pool.ntp.org";
+int timezone_offset_h = 1;
+bool use_dst = false;
+
+void apply_time_zone_config() {
+    long gmt_sec = (long)timezone_offset_h * 3600;
+    long dst_sec = use_dst ? 3600 : 0;
+    configTime(gmt_sec, dst_sec, ntp_server.c_str(), "time.nist.gov");
+    app_log("NTP time sync updated (GMT %+d, DST: %s).", timezone_offset_h, use_dst ? "Active (+1h)" : "Disabled");
+}
 
 Preferences prefs;
 
@@ -488,6 +497,8 @@ void load_settings() {
     dns_primary       = prefs.getString("dns_p", "");
     dns_secondary     = prefs.getString("dns_s", "8.8.8.8");
     ntp_server        = prefs.getString("ntp", "pool.ntp.org");
+    timezone_offset_h = prefs.getInt("tz_off", 1);
+    use_dst           = prefs.getBool("use_dst", false);
 
     // I2C / Environmental sensors
     i2c_sda_pin           = prefs.getInt("sda", 4);
@@ -1006,8 +1017,7 @@ void setup() {
     }
     
 
-    configTime(0, 0, ntp_server.c_str(), "time.nist.gov");
-    app_log("NTP time synchronization initialized (GMT-0).");
+    apply_time_zone_config();
 
     // Initialize systems
     setup_web_server();

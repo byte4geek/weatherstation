@@ -1,6 +1,6 @@
-# DIY Smart Weather Station (v1.0.2)
+# DIY Smart Weather Station (v1.0.3)
 
-A feature-rich, high-precision ESP8266-based Smart Weather Station with a modern responsive Web Dashboard, single-board mobile Compact UI, Material Design Icons (MDI), dynamic sensor detection, customizable moving-average filters, Metric & Imperial unit system support, Home Assistant MQTT Auto-Discovery, full backup/restore capability, and hardware factory reset logic.
+A feature-rich, high-precision ESP8266-based Smart Weather Station with a modern responsive Web Dashboard, single-board mobile Compact UI, Timezone & Daylight Saving Time (DST) configuration, Material Design Icons (MDI), dynamic sensor detection, customizable moving-average filters, Metric & Imperial unit system support, Home Assistant MQTT Auto-Discovery, full backup/restore capability, and hardware factory reset logic.
 ---
 
 > [!NOTE]
@@ -13,7 +13,7 @@ A feature-rich, high-precision ESP8266-based Smart Weather Station with a modern
 
 - [Features](#-features)
 - [Photo Gallery](GALLERY.md)
-- [Required Hardware & Purchase Links](#-required-hardware--purchase-links)
+- [Hardware Bill of Materials (BOM) & Purchase Links](#-hardware-bill-of-materials-bom--purchase-links)
 - [3D Printing & Mechanical Assembly](#-3d-printing--mechanical-assembly)
 - [Wiring & Pinout](#-wiring--pinout)
 - [Web Interface Overview](#-web-interface-overview)
@@ -32,6 +32,10 @@ A feature-rich, high-precision ESP8266-based Smart Weather Station with a modern
 ## ✨ Features
 
 - **Environmental Monitoring**: Temperature, Relative Humidity, Barometric Pressure (sea-level compensated), Air Quality (TVOC, eCO2, AQI), Luminosity (lux), Wind Speed, Wind Gust, Wind Direction, and Rain Gauge (hourly, 24h rolling, and total).
+- **Timezone & Daylight Saving Time (DST)**:
+  - Selectable GMT/UTC offset (UTC-12 to UTC+12) and DST toggle in Settings.
+  - Automatic local date & time formatting across Web Dashboard, Debug Console logs, and system tables.
+  - Persisted in NVS flash memory and included in single-click JSON backup/restore.
 - **Single-Board Mobile Compact UI**:
   - Unified single-container widget board (`Compact UI`) designed to fit **100% of all weather metrics on a single mobile screen without vertical scrolling**.
   - Selectable between **Classic (Spacious Cards)** and **Compact (Single-Board All-in-One)** in Settings. Saved in NVS flash memory.
@@ -90,11 +94,11 @@ Click on any image below or in the gallery to open the full-resolution view!
 
 ---
 
-## 🛒 Required Hardware & Purchase Links
+## 🛒 Hardware Bill of Materials (BOM) & Purchase Links
 
-Below is the list of components used in this build, along with referral links to purchase them on AliExpress:
+Below is the list of hardware components required for this build, along with referral links to purchase them on AliExpress:
 
-| Component | Function / Measurement | Interface | Address / Pin | Purchase Link |
+| Component | Function / Measurement | Interface | Address / Default Pin | Purchase Link |
 |---|---|---|---|---|
 | **ESP8266 NodeMCU v3** (or ESP-12E) | Main Microcontroller | — | — | [🛒 Buy on AliExpress](https://s.click.aliexpress.com/e/_c35pmlcL) |
 | **AHT20 + BMP280 Module** | Temp, Humidity & Pressure | I2C | `0x38` / `0x76` | [🛒 Buy on AliExpress](https://s.click.aliexpress.com/e/_c4eIj6iL) |
@@ -104,8 +108,6 @@ Below is the list of components used in this build, along with referral links to
 | **A3144 Hall Sensor** | Anemometer & Rain Bucket Pulses | GPIO Interrupt | GPIO 12 & GPIO 14 | [🛒 Buy on AliExpress](https://s.click.aliexpress.com/e/_c3e8m5mR) |
 | **608Z Ball Bearings** | Low-Friction Bearings (Wind Speed & Dir) | Mechanical | — | [🛒 Buy on AliExpress](https://s.click.aliexpress.com/e/_c2JGdVCF) |
 | **5V Power Supply Module** | System Power Supply | Power | 5V / Vin | [🛒 Buy on AliExpress](https://s.click.aliexpress.com/e/_c4eHOFu7) |
-| **FLASH Button** | Factory NVS Wipe (Hold 10s) | GPIO Pull-Up | GPIO 0 (D3) | Built-in on NodeMCU |
-| **Status LED** | WiFi & MQTT Status Indicator | Active-LOW | GPIO 2 (D4) | Built-in on NodeMCU |
 
 ---
 

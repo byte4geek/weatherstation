@@ -713,9 +713,6 @@ const char index_html[] PROGMEM = R"rawliteral(
                     <div class="card success">
                         <div class="card-title"><i class="mdi mdi-water" style="color: #1d4ed8; font-size: 1.1rem; vertical-align: -2px; margin-right: 4px;"></i> Total Rain</div>
                         <div class="card-value"><span id="val_total">0.00</span> <span class="card-unit" id="unit_total">mm</span></div>
-                        <div style="margin-top: 10px;">
-                            <button class="btn btn-sec" style="font-size: 0.8rem; padding: 6px 12px; border-radius: 6px;" onclick="clearCounters()"><i class="mdi mdi-refresh"></i> Reset</button>
-                        </div>
                     </div>
                 </div>
 
@@ -733,7 +730,7 @@ const char index_html[] PROGMEM = R"rawliteral(
                     <div class="panel-section">
                         <h3><i class="mdi mdi-chip" style="color: var(--primary); margin-right: 6px;"></i> System Information</h3>
                         <table class="info-table">
-                            <tr><td><i class="mdi mdi-clock-outline" style="color: var(--primary); margin-right: 4px;"></i> Date/Time (GMT-0)</td><td><span id="sys_time">NTP Syncing...</span></td></tr>
+                            <tr><td><i class="mdi mdi-clock-outline" style="color: var(--primary); margin-right: 4px;"></i> Local Date/Time</td><td><span id="sys_time">NTP Syncing...</span></td></tr>
                             <tr><td><i class="mdi mdi-wifi" style="color: var(--primary); margin-right: 4px;"></i> Wi-Fi SSID</td><td><span id="sys_ssid">--</span></td></tr>
                             <tr><td><i class="mdi mdi-signal" style="color: var(--primary); margin-right: 4px;"></i> Signal RSSI</td><td><span id="sys_rssi">--</span></td></tr>
                             <tr><td><i class="mdi mdi-ip-network" style="color: var(--primary); margin-right: 4px;"></i> IP Address</td><td><span id="sys_ip">--</span></td></tr>
@@ -752,7 +749,7 @@ const char index_html[] PROGMEM = R"rawliteral(
                     <div class="c-title">
                         <i class="mdi mdi-weather-partly-cloudy" style="color: var(--primary); font-size: 1.4rem;"></i>
                         <span>Weather Station</span>
-                        <span class="c-badge-ver">v<span id="c_val_ver">1.0.2</span></span>
+                        <span class="c-badge-ver">v<span id="c_val_ver">1.0.3</span></span>
                     </div>
                     <div class="c-header-badges">
                         <span id="c_rain_badge" class="c-status-badge badge-clear">
@@ -892,6 +889,43 @@ const char index_html[] PROGMEM = R"rawliteral(
                                 <option value="compact">Compact (All-in-One High Density)</option>
                             </select>
                         </div>
+                        <div class="form-group">
+                            <label for="conf_tz">Timezone (GMT / UTC Offset):</label>
+                            <select id="conf_tz">
+                                <option value="-12">UTC-12:00 (Baker Island)</option>
+                                <option value="-11">UTC-11:00 (Samoa, Niue)</option>
+                                <option value="-10">UTC-10:00 (Hawaii, Tahiti)</option>
+                                <option value="-9">UTC-09:00 (Alaska)</option>
+                                <option value="-8">UTC-08:00 (Pacific Time US/Canada)</option>
+                                <option value="-7">UTC-07:00 (Mountain Time US/Canada)</option>
+                                <option value="-6">UTC-06:00 (Central Time US/Canada, Mexico)</option>
+                                <option value="-5">UTC-05:00 (Eastern Time US/Canada, Bogota)</option>
+                                <option value="-4">UTC-04:00 (Atlantic Time, Santiago)</option>
+                                <option value="-3">UTC-03:00 (Buenos Aires, Brasilia)</option>
+                                <option value="-2">UTC-02:00 (Mid-Atlantic)</option>
+                                <option value="-1">UTC-01:00 (Azores, Cape Verde)</option>
+                                <option value="0">UTC+00:00 (London, Dublin, Lisbon, GMT)</option>
+                                <option value="1">UTC+01:00 (Rome, Paris, Berlin, Madrid - CET)</option>
+                                <option value="2">UTC+02:00 (Athens, Cairo, Helsinki, Kyiv - EET)</option>
+                                <option value="3">UTC+03:00 (Moscow, Istanbul, Riyadh)</option>
+                                <option value="4">UTC+04:00 (Dubai, Baku)</option>
+                                <option value="5">UTC+05:00 (Karachi, Tashkent)</option>
+                                <option value="6">UTC+06:00 (Dhaka, Almaty)</option>
+                                <option value="7">UTC+07:00 (Bangkok, Jakarta, Hanoi)</option>
+                                <option value="8">UTC+08:00 (Beijing, Singapore, Perth, Hong Kong)</option>
+                                <option value="9">UTC+09:00 (Tokyo, Seoul)</option>
+                                <option value="10">UTC+10:00 (Sydney, Melbourne, Guam)</option>
+                                <option value="11">UTC+11:00 (Solomon Islands, Noumea)</option>
+                                <option value="12">UTC+12:00 (Auckland, Fiji)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="conf_dst">Daylight Saving Time (DST):</label>
+                            <select id="conf_dst">
+                                <option value="false">Disabled (Standard Time +0h)</option>
+                                <option value="true">Enabled (Daylight Saving +1h)</option>
+                            </select>
+                        </div>
                     </div>
 
                     <div class="panel-section">
@@ -907,6 +941,10 @@ const char index_html[] PROGMEM = R"rawliteral(
                         <div class="form-group">
                             <label for="conf_deb">Software Debounce (ms):</label>
                             <input type="number" id="conf_deb" min="0">
+                        </div>
+                        <div class="form-group">
+                            <label>Reset Rain Counter:</label>
+                            <button type="button" class="btn btn-sec" style="font-size: 0.85rem; padding: 6px 14px; border-radius: 8px;" onclick="clearCounters()"><i class="mdi mdi-refresh"></i> Reset Total Rain</button>
                         </div>
                     </div>
 
@@ -1711,6 +1749,12 @@ const char index_html[] PROGMEM = R"rawliteral(
                         document.getElementById('conf_ui_mode').value = mode;
                         toggleUiMode(mode);
                     }
+                    if (document.getElementById('conf_tz')) {
+                        document.getElementById('conf_tz').value = (c.tz_off !== undefined) ? c.tz_off : 1;
+                    }
+                    if (document.getElementById('conf_dst')) {
+                        document.getElementById('conf_dst').value = (c.use_dst ? 'true' : 'false');
+                    }
                     document.getElementById('conf_pin').value = c.pin;
                     document.getElementById('conf_cal').value = c.calibration;
                     document.getElementById('conf_deb').value = c.debounce;
@@ -1794,6 +1838,8 @@ const char index_html[] PROGMEM = R"rawliteral(
                 hostname: document.getElementById('conf_host').value,
                 use_imperial: document.getElementById('conf_units') ? (document.getElementById('conf_units').value === 'imperial') : false,
                 ui_compact: document.getElementById('conf_ui_mode') ? (document.getElementById('conf_ui_mode').value === 'compact') : false,
+                tz_off: document.getElementById('conf_tz') ? parseInt(document.getElementById('conf_tz').value) : 1,
+                use_dst: document.getElementById('conf_dst') ? (document.getElementById('conf_dst').value === 'true') : false,
                 pin: parseInt(document.getElementById('conf_pin').value),
                 calibration: parseFloat(document.getElementById('conf_cal').value),
                 debounce: parseInt(document.getElementById('conf_deb').value),
@@ -2321,12 +2367,12 @@ String execute_console_command(String cmd) {
 
 String get_formatted_time() {
     time_t now = time(nullptr);
-    struct tm* timeinfo = gmtime(&now);
-    if (timeinfo->tm_year < 120) {
+    struct tm* timeinfo = localtime(&now);
+    if (timeinfo == nullptr || timeinfo->tm_year < 120) {
         return "NTP Syncing...";
     }
     char buf[64];
-    strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S GMT", timeinfo);
+    strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", timeinfo);
     return String(buf);
 }
 
@@ -2429,6 +2475,8 @@ void setup_web_server() {
         doc["hostname"] = hostname;
         doc["use_imperial"] = use_imperial;
         doc["ui_compact"] = ui_compact;
+        doc["tz_off"] = timezone_offset_h;
+        doc["use_dst"] = use_dst;
         doc["pin"] = rain_sensor_pin;
         doc["calibration"] = rain_calibration;
         doc["debounce"] = rain_debounce_ms;
@@ -2491,6 +2539,8 @@ void setup_web_server() {
         doc["hostname"] = hostname;
         doc["use_imperial"] = use_imperial;
         doc["ui_compact"] = ui_compact;
+        doc["tz_off"] = timezone_offset_h;
+        doc["use_dst"] = use_dst;
         doc["pin"] = rain_sensor_pin;
         doc["calibration"] = rain_calibration;
         doc["debounce"] = rain_debounce_ms;
@@ -2667,6 +2717,16 @@ void setup_web_server() {
                 String ntp_srv = doc["ntp"] | "pool.ntp.org";
                 local_prefs.putString("ntp", ntp_srv);
                 ntp_server = ntp_srv;
+
+                if (doc["tz_off"].is<int>()) {
+                    timezone_offset_h = doc["tz_off"].as<int>();
+                    local_prefs.putInt("tz_off", timezone_offset_h);
+                }
+                if (doc["use_dst"].is<bool>()) {
+                    use_dst = doc["use_dst"].as<bool>();
+                    local_prefs.putBool("use_dst", use_dst);
+                }
+                apply_time_zone_config();
                 
                 mqtt_publish_interval_s = doc["mqtt_int"] | 15;
                 sensor_read_interval_s = doc["sens_int"] | 5;

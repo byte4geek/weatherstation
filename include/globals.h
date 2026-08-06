@@ -6,7 +6,7 @@
 #include <PubSubClient.h>
 
 // --- Firmware Version ---
-#define FIRMWARE_VERSION "1.0.2"
+#define FIRMWARE_VERSION "1.0.3"
 
 // --- RAIN DATA CONFIGURATION ---
 extern volatile uint32_t total_bucket_tips;
@@ -77,6 +77,9 @@ extern int mqtt_decimals;
 extern String dns_primary;
 extern String dns_secondary;
 extern String ntp_server;
+extern int timezone_offset_h;
+extern bool use_dst;
+void apply_time_zone_config();
 
 extern int wind_sensor_pin;
 extern float wind_calibration;
