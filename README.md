@@ -114,6 +114,8 @@ Below is the list of hardware components required for this build, along with ref
 | **A3144 Hall Sensor** | Anemometer & Rain Bucket Pulses | GPIO Interrupt | GPIO 12 & GPIO 14 | [🛒 Buy on AliExpress](https://s.click.aliexpress.com/e/_c3e8m5mR) |
 | **608Z Ball Bearings** | Low-Friction Bearings (Wind Speed & Dir) | Mechanical | — | [🛒 Buy on AliExpress](https://s.click.aliexpress.com/e/_c2JGdVCF) |
 | **5V Power Supply Module** | System Power Supply | Power | 5V / Vin | [🛒 Buy on AliExpress](https://s.click.aliexpress.com/e/_c4eHOFu7) |
+| **Counterweight** | Place inside of the weather vane | Mechanical | — | [🛒 Buy on AliExpress](https://s.click.aliexpress.com/e/_c2Q74791) |
+
 
 ---
 
