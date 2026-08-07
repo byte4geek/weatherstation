@@ -149,6 +149,7 @@ To ensure the anemometer (wind speed) and wind vane (wind direction) turn freely
 - **Sensor Support Arms**: The arms holding the sensor housings must be press-fitted into the main pole mounting base with firm pressure. Use a **rubber mallet** to gently tap them into place if needed.
 - **Pole Mount Diameter**: The mounting base is designed to fit standard **3/4-inch galvanized steel pipes** (tubi zincati da 3/4").
 - **M8 Thread Retapping**: The M8 screw threads on the pole mount base should be chased/retapped using an **M8 thread tap tool**. Retapping cleans up the 3D-printed threads so M8 clamping bolts can be easily threaded in and tightened securely against the metal pipe, preventing the base from twisting or slipping in strong winds.
+- **Counterweight**: It should be inserted inside the tip of the vane. This will prevent it from swinging too much. You can insert any weight you have available or find the weights in the BOM.
 
 ---
 
