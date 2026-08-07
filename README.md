@@ -76,17 +76,21 @@ Click on any image below or in the gallery to open the full-resolution view!
 
 <table>
   <tr>
-    <td align="center" width="33%">
-      <a href="images/fully_optionals_smart_wheather_station.jpg"><img src="images/fully_optionals_smart_wheather_station.jpg" width="280" alt="Smart Weather Station"/></a><br/>
+    <td align="center" width="25%">
+      <a href="images/fully_optionals_smart_wheather_station.jpg"><img src="images/fully_optionals_smart_wheather_station.jpg" width="220" alt="Smart Weather Station"/></a><br/>
       <b>Smart Weather Station</b>
     </td>
-    <td align="center" width="33%">
-      <a href="images/weahet_station_dashboard.png"><img src="images/weahet_station_dashboard.png" width="280" alt="Web Dashboard"/></a><br/>
+    <td align="center" width="25%">
+      <a href="images/weahet_station_dashboard.png"><img src="images/weahet_station_dashboard.png" width="220" alt="Web Dashboard"/></a><br/>
       <b>Web Dashboard</b>
     </td>
-    <td align="center" width="33%">
-      <a href="images/esp%2Bpower%20box.jpg"><img src="images/esp%2Bpower%20box.jpg" width="280" alt="Electronics Enclosure"/></a><br/>
+    <td align="center" width="25%">
+      <a href="images/esp%2Bpower%20box.jpg"><img src="images/esp%2Bpower%20box.jpg" width="220" alt="Electronics Enclosure"/></a><br/>
       <b>Electronics Box</b>
+    </td>
+    <td align="center" width="25%">
+      <a href="images/Weather_station_wiring_diagram.png"><img src="images/Weather_station_wiring_diagram.png" width="220" alt="Wiring Diagram"/></a><br/>
+      <b>Wiring Diagram</b>
     </td>
   </tr>
 </table>
@@ -146,6 +150,13 @@ To ensure the anemometer (wind speed) and wind vane (wind direction) turn freely
 ---
 
 ## 🔌 Wiring & Pinout
+
+### 📊 Full Schematic Wiring Diagram
+
+<p align="center">
+  <a href="images/Weather_station_wiring_diagram.png"><img src="images/Weather_station_wiring_diagram.png" width="800" alt="Weather Station Wiring Diagram"/></a><br/>
+  <i>Click on the diagram image to view the full high-resolution schematic</i>
+</p>
 
 Below is the recommended pin mapping for the ESP8266 NodeMCU board:
 

@@ -186,3 +186,12 @@ Click on any thumbnail image to view it in full resolution!
     </td>
   </tr>
 </table>
+
+---
+
+## 🔌 Schematic Wiring Diagram
+
+<p align="center">
+  <a href="images/Weather_station_wiring_diagram.png"><img src="images/Weather_station_wiring_diagram.png" width="800" alt="Weather Station Wiring Diagram"/></a><br/>
+  <b>Complete ESP8266 & Sensor Wiring Schematic Diagram</b>
+</p>
