@@ -25,6 +25,7 @@ A feature-rich, high-precision ESP8266-based Smart Weather Station with a modern
 - [Home Assistant & MQTT Integration](#-home-assistant--mqtt-integration)
 - [Hardware Factory Reset](#-hardware-factory-reset)
 - [Backup & Restore](#-backup--restore)
+- [REST API Reference](RESTAPI_REFERENCE.md)
 - [Compilation & Flashing](#-compilation--flashing)
 - [License & Credits](#-license--credits)
 
@@ -351,6 +352,14 @@ If you lose access to the web portal or misconfigure the network settings, you c
 1. Click **Restore Backup** and select your saved `.json` file.
 2. Confirm the prompt.
 3. Settings will be restored to NVS flash and the station will reboot automatically within 8 seconds.
+
+---
+
+## 📡 REST API Reference
+
+The weather station exposes **15 HTTP REST API endpoints** for querying live sensor telemetry, modifying configuration parameters, triggering sensor calibration wizards, executing interactive console commands, and integrating into third-party automation systems (Home Assistant, Python scripts, cURL, etc.).
+
+👉 **[View Complete REST API Documentation & Integration Examples (RESTAPI_REFERENCE.md)](RESTAPI_REFERENCE.md)**
 
 ---
 
