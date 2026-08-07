@@ -397,6 +397,11 @@ pio run --target upload
 # Open Serial Monitor
 pio device monitor -b 115200
 ```
+---
+# Donation
+Buy me a coffee
+
+[![Donate](https://img.shields.io/badge/Donate-PayPal-green.svg)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=VK4CSX9NVQAZU)
 
 ---
 
