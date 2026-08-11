@@ -113,10 +113,11 @@ Below is the list of hardware components required for this build, along with ref
 | **BH1750 Lux Sensor** | Ambient Light / Luminosity | I2C | `0x23` | [🛒 Buy on AliExpress](https://s.click.aliexpress.com/e/_c3y4FY0P) |
 | **A3144 Hall Sensor** | Anemometer & Rain Bucket Pulses | GPIO Interrupt | GPIO 12 & GPIO 14 | [🛒 Buy on AliExpress](https://s.click.aliexpress.com/e/_c3e8m5mR) |
 | **608Z Ball Bearings** | Low-Friction Bearings (Wind Speed & Dir) | Mechanical | — | [🛒 Buy on AliExpress](https://s.click.aliexpress.com/e/_c2JGdVCF) |
-| **5V Power Supply Module** | System Power Supply | Power | 5V / Vin | [🛒 Buy on AliExpress](https://s.click.aliexpress.com/e/_c43AFMgx) |
+| **5V Power Supply Module** | System Power Supply | Power | 5V 1A / Vin | [🛒 Buy on AliExpress](https://s.click.aliexpress.com/e/_c43AFMgx) |
 | **Counterweight** | Place inside of the weather vane | Mechanical | — | [🛒 Buy on AliExpress](https://s.click.aliexpress.com/e/_c2Q74791) |
 
 
+Note: The entire system draws a maximum of 500mA. You can safely power it by harvesting the internal board of any standard 5V/1A (or higher) smartphone charger.
 ---
 
 ## 🖨️ 3D Printing & Mechanical Assembly
