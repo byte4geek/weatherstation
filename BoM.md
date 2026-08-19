@@ -1,3 +1,20 @@
+## Table of Contents
+
+<!-- TOC -->
+
+- [Table of Contents](#table-of-contents)
+- [Purchasing guidance](#purchasing-guidance)
+- [Core electronics](#core-electronics)
+- [Mechanical hardware](#mechanical-hardware)
+- [Magnets and motion parts](#magnets-and-motion-parts)
+- [Printed components](#printed-components)
+- [Wiring and weatherproofing](#wiring-and-weatherproofing)
+- [Tools and consumables](#tools-and-consumables)
+- [Recommended spare parts](#recommended-spare-parts)
+- [Repository-ready BOM note](#repository-ready-bom-note)
+
+<!-- /TOC -->
+
 ## Purchasing guidance
 
 Buy hardware only after downloading the MakerWorld 3MF/STL package and checking its hole diameters, magnet pockets, and fastener locations; printed-model revisions can change the exact sizes. The associated MakerWorld model is published as a "Fully optional smart weather station," so some sensor modules and printed assemblies may be intentionally modular. 

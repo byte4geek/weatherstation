@@ -1,3 +1,27 @@
+## Table of Contents
+
+<!-- TOC -->
+
+- [Table of Contents](#table-of-contents)
+- [Intro](#intro)
+- [Before you start](#before-you-start)
+- [Print preparation](#print-preparation)
+- [Main pole mount](#main-pole-mount)
+- [Electronics enclosure](#electronics-enclosure)
+- [Temperature, humidity, pressure, air-quality and light arm](#temperature-humidity-pressure-air-quality-and-light-arm)
+- [Radiation shield orientation](#radiation-shield-orientation)
+- [Wind vane](#wind-vane)
+- [Anemometer](#anemometer)
+- [Rain gauge](#rain-gauge)
+    - [Bucket calibration](#bucket-calibration)
+- [Final outdoor layout](#final-outdoor-layout)
+- [Commissioning checklist](#commissioning-checklist)
+- [Final note](#final-note)
+
+<!-- /TOC -->
+
+## Intro
+
 Below is a practical **draft assembly chapter** you can add to the repository README. It fills the mechanical gap while staying aligned with the documented electronics, pinout, calibration options, and MakerWorld model set. The project's printable parts include enclosures, radiation shields, sensor arms, and mounting brackets; the firmware expects an ESP8266 NodeMCU with the listed I2C and pulse sensors.
 
 ## Before you start
