@@ -1,5 +1,3 @@
-Below is a practical **draft assembly chapter** you can add to the repository README. It fills the mechanical gap while staying aligned with the documented electronics, pinout, calibration options, and MakerWorld model set. The project's printable parts include enclosures, radiation shields, sensor arms, and mounting brackets; the firmware expects an ESP8266 NodeMCU with the listed I2C and pulse sensors.
-
 ## Before you start
 
 Print outdoor parts in **PETG, ASA, or another UV- and weather-resistant material**. Avoid PLA for permanent outdoor use, especially for the radiation shield, moving parts, and pole mount, because heat and UV exposure can cause deformation over time.
