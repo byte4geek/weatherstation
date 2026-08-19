@@ -1,4 +1,4 @@
-Below is a practical **draft assembly chapter** you can add to the repository README. It fills the mechanical gap while staying aligned with the documented electronics, pinout, calibration options, and MakerWorld model set. The project's printable parts include enclosures, radiation shields, sensor arms, and mounting brackets; the firmware expects an ESP8266 NodeMCU with the listed I2C and pulse sensors.
+## Table of Contents
 
 <!-- TOC -->
 
