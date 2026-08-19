@@ -145,6 +145,6 @@ Keep these on hand because they are small, inexpensive, and most likely to fail 
 - Spare cable glands and UV-resistant cable ties.
 - A small bottle of light bearing oil.
 
-## Repository-ready BOM note
+## BOM note
 
-> **Quantities are for one complete, fully equipped weather station.** Optional components include the ENS160 air-quality sensor and BH1750 light sensor. Before ordering magnets, shafts, and screws, check the dimensions in the downloaded 3MF/STL files, as those printed models define the exact pocket diameter, shaft fit, and fastener length. The firmware must be configured to match the final anemometer magnet count, arm radius, rain-gauge calibration, and AS5600 north offset. 
+**Quantities are for one complete, fully equipped weather station.** Optional components include the ENS160 air-quality sensor and BH1750 light sensor. Before ordering magnets, shafts, and screws, check the dimensions in the downloaded 3MF/STL files, as those printed models define the exact pocket diameter, shaft fit, and fastener length. The firmware must be configured to match the final anemometer magnet count, arm radius, rain-gauge calibration, and AS5600 north offset. 
