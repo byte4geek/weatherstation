@@ -6,7 +6,7 @@
 #include <PubSubClient.h>
 
 // --- Firmware Version ---
-#define FIRMWARE_VERSION "1.0.3"
+#define FIRMWARE_VERSION "1.0.4"
 
 // --- RAIN DATA CONFIGURATION ---
 extern volatile uint32_t total_bucket_tips;
@@ -28,6 +28,8 @@ extern bool has_ens160;
 extern uint16_t ens160_tvoc;
 extern uint16_t ens160_eco2;
 extern uint8_t ens160_aqi;
+void reset_ens160_baseline();
+void get_ens160_resistances(uint32_t& rs0, uint32_t& rs1, uint32_t& rs2, uint32_t& rs3);
 
 // --- ANEMOMETER (WIND SPEED) SENSOR DATA ---
 extern float wind_speed_kmh;
@@ -131,3 +133,6 @@ void send_cloud_ping(String event_type);
 // --- Crash Diagnostics ---
 extern bool opt_in_crash_dump;
 void check_and_send_crash_dump();
+
+// --- ENS160 Control ---
+void reset_ens160_baseline();

@@ -754,20 +754,34 @@ void read_environmental_sensors() {
 
     // Read ENS160 if present
     if (has_ens160) {
-        // Write compensation if we have a valid temp/humidity reading
+        // Write compensation only when temp or humidity changes noticeably (prevents constant I2C compensation writes)
+        static float last_comp_t = -999.0f;
+        static float last_comp_h = -999.0f;
         if (has_aht20 || has_bmp280) {
-            uint16_t t_comp = Ens16x_CalcTempInFromCelsius(temperature_c);
-            uint16_t h_comp = Ens16x_CalcRhIn(has_aht20 ? humidity_pct : 50.0f);
-            ens160.writeCompensation(t_comp, h_comp);
+            float comp_h = has_aht20 ? humidity_pct : 50.0f;
+            if (fabs(temperature_c - last_comp_t) >= 0.2f || fabs(comp_h - last_comp_h) >= 1.0f) {
+                uint16_t t_comp = Ens16x_CalcTempInFromCelsius(temperature_c);
+                uint16_t h_comp = Ens16x_CalcRhIn(comp_h);
+                ens160.writeCompensation(t_comp, h_comp);
+                last_comp_t = temperature_c;
+                last_comp_h = comp_h;
+            }
         }
         
         ens160.update();
-        ens160_tvoc = ens160.getTvoc();
-        ens160_eco2 = ens160.getEco2();
-        ens160_aqi = ens160.getAirQualityIndex_UBA();
+        uint16_t raw_tvoc = ens160.getTvoc();
+        uint16_t raw_eco2 = ens160.getEco2();
+        uint8_t  raw_aqi  = (uint8_t)ens160.getAirQualityIndex_UBA();
+
+        if (raw_aqi >= 1 && raw_aqi <= 5) {
+            ens160_tvoc = raw_tvoc;
+            ens160_eco2 = raw_eco2;
+            ens160_aqi  = raw_aqi;
+        }
+
         if (debug_logs_enabled) {
-            app_log("[I2C Debug] [ENS160] Accepted read - TVOC: %u ppb, eCO2: %u ppm, AQI: %d", 
-                    ens160_tvoc, ens160_eco2, ens160_aqi);
+            app_log("[I2C Debug] [ENS160] Library update read - TVOC: %u ppb, eCO2: %u ppm, AQI: %d", 
+                    raw_tvoc, raw_eco2, raw_aqi);
         }
     } else {
         ens160_tvoc = 0;
@@ -1207,4 +1221,65 @@ void loop() {
     }
 
     delay(10); // Small delay to yield to ESP32 background tasks
+}
+
+void reset_ens160_baseline() {
+    uint8_t addr = 0x53;
+    Wire.beginTransmission(0x53);
+    if (Wire.endTransmission() != 0) {
+        addr = 0x52;
+    }
+    
+    // 1. Put ENS160 in IDLE mode (0x01)
+    Wire.beginTransmission(addr);
+    Wire.write(0x10); // OPMODE register
+    Wire.write(0x01); // IDLE mode
+    Wire.endTransmission();
+    delay(20);
+    
+    // 2. Issue CLEAR BASELINE command (0xCC) to COMMAND register (0x12)
+    Wire.beginTransmission(addr);
+    Wire.write(0x12); // COMMAND register
+    Wire.write(0xCC); // Clear Baseline
+    Wire.endTransmission();
+    delay(50);
+    
+    // 3. Issue Soft Reset command (0xF0) to COMMAND register (0x12)
+    Wire.beginTransmission(addr);
+    Wire.write(0x12); // COMMAND register
+    Wire.write(0xF0); // Soft Reset
+    Wire.endTransmission();
+    delay(100);
+    
+    // 4. Set OPMODE register (0x10) to Standard Operation (0x02)
+    Wire.beginTransmission(addr);
+    Wire.write(0x10); // OPMODE register
+    Wire.write(0x02); // Standard mode
+    Wire.endTransmission();
+    delay(50);
+    
+    // Re-initialize library driver
+    ens160.begin(&Wire, addr);
+    if (ens160.init()) {
+        has_ens160 = true;
+        ens160.startStandardMeasure();
+    }
+    
+    // Reset global measurement variables immediately to clean air baseline
+    ens160_tvoc = 0;
+    ens160_eco2 = 400;
+    ens160_aqi  = 1;
+    
+    app_log("[ENS160] Complete Hardware Baseline Wipe (0xCC + 0xF0) executed on 0x%02X.", addr);
+}
+
+void get_ens160_resistances(uint32_t& rs0, uint32_t& rs1, uint32_t& rs2, uint32_t& rs3) {
+    if (has_ens160) {
+        rs0 = ens160.getRs0();
+        rs1 = ens160.getRs1();
+        rs2 = ens160.getRs2();
+        rs3 = ens160.getRs3();
+    } else {
+        rs0 = rs1 = rs2 = rs3 = 0;
+    }
 }

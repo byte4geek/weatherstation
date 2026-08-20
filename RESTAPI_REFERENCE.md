@@ -109,7 +109,7 @@ Returns current configuration settings, I2C pin assignments, calibration constan
 #### Sample Response (`200 OK`)
 ```json
 {
-  "fw_version": "1.0.3",
+  "fw_version": "1.0.4",
   "hostname": "WeatherStation",
   "use_imperial": false,
   "ui_compact": false,
@@ -294,6 +294,7 @@ Executes an interactive debug console command.
 - `clear_rain`: Resets total rain tips counter.
 - `clear_gust`: Resets peak wind gust recorded today back to 0.0 km/h.
 - `calibrate_north`: Sets current AS5600 position as North.
+- `reset_ens160`: Resets the ENS160 internal baseline engine and re-initializes air quality measurements.
 - `loglevel debug` / `loglevel info`: Enables/disables verbose I2C bus traffic logging.
 - `set_cal <val>`: Sets rain gauge calibration factor (mm/tip).
 - `set_deb <val>`: Sets rain gauge debounce duration in ms.

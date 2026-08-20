@@ -1,4 +1,4 @@
-# DIY Smart Weather Station (v1.0.3)
+# DIY Smart Weather Station (v1.0.4)
 
 A feature-rich, high-precision ESP8266-based Smart Weather Station with a modern responsive Web Dashboard, single-board mobile Compact UI, Timezone & Daylight Saving Time (DST) configuration, Material Design Icons (MDI), dynamic sensor detection, customizable moving-average filters, Metric & Imperial unit system support, Home Assistant MQTT Auto-Discovery, full backup/restore capability, and hardware factory reset logic.
 ---
@@ -412,7 +412,7 @@ Buy me a coffee
 ## 📄 License & Credits
 
 - **Author**: byte4geek
-- **Firmware Version**: v1.0.3 (Release 2026)
+- **Firmware Version**: v1.0.4 (Release 2026)
 - **License**: [MIT License](LICENSE.md)
 
 ```text

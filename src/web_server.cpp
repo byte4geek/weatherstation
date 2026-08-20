@@ -749,7 +749,7 @@ const char index_html[] PROGMEM = R"rawliteral(
                     <div class="c-title">
                         <i class="mdi mdi-weather-partly-cloudy" style="color: var(--primary); font-size: 1.4rem;"></i>
                         <span>Weather Station</span>
-                        <span class="c-badge-ver">v<span id="c_val_ver">1.0.3</span></span>
+                        <span class="c-badge-ver">v<span id="c_val_ver">1.0.4</span></span>
                     </div>
                     <div class="c-header-badges">
                         <span id="c_rain_badge" class="c-status-badge badge-clear">
@@ -1370,7 +1370,7 @@ const char index_html[] PROGMEM = R"rawliteral(
                 case 3: return 'Moderate';
                 case 4: return 'Poor';
                 case 5: return 'Unhealthy';
-                default: return 'Unknown';
+                default: return 'Warming Up...';
             }
         }
 
@@ -1381,7 +1381,7 @@ const char index_html[] PROGMEM = R"rawliteral(
                 case 3: return '<span style="color: #eab308; font-weight: bold;">3 - Moderate</span>';
                 case 4: return '<span style="color: #f97316; font-weight: bold;">4 - Poor</span>';
                 case 5: return '<span style="color: var(--danger); font-weight: bold;">5 - Unhealthy</span>';
-                default: return 'Unknown';
+                default: return '<span style="color: var(--primary); font-weight: bold;">Warming Up...</span>';
             }
         }
 
@@ -2217,7 +2217,7 @@ String execute_console_command(String cmd) {
         app_log("Available commands:");
         app_log(" - help, status, reset, clear_logs, i2c_scan");
         app_log(" - clear_rain, set_cal <val>, set_deb <val>, set_pin <val>");
-        app_log(" - clear_gust, calibrate_north, loglevel <info|debug>");
+        app_log(" - clear_gust, calibrate_north, reset_ens160, ens160_diag, loglevel <info|debug>");
         return "OK";
     } 
     else if (baseCmd == "loglevel") {
@@ -2321,6 +2321,25 @@ String execute_console_command(String cmd) {
     else if (baseCmd == "clear_logs") {
         clear_logs();
         return "Logs cleared.";
+    }
+    else if (baseCmd == "reset_ens160") {
+        if (!has_ens160) {
+            return "Error: ENS160 gas sensor not detected.";
+        }
+        reset_ens160_baseline();
+        return "ENS160 baseline reset initiated successfully.";
+    }
+    else if (baseCmd == "ens160_diag") {
+        if (!has_ens160) {
+            return "Error: ENS160 gas sensor not detected.";
+        }
+        uint32_t rs0 = 0, rs1 = 0, rs2 = 0, rs3 = 0;
+        get_ens160_resistances(rs0, rs1, rs2, rs3);
+        char diagBuf[128];
+        snprintf(diagBuf, sizeof(diagBuf), "ENS160 Hotplate Resistances: RS0: %u Ohm, RS1: %u Ohm, RS2: %u Ohm, RS3: %u Ohm",
+                 rs0, rs1, rs2, rs3);
+        app_log("%s", diagBuf);
+        return String(diagBuf);
     }
     else if (baseCmd == "set_cal") {
         if (arg == "") return "Error: enter a decimal value.";
