@@ -102,25 +102,15 @@ Click on any image below or in the gallery to open the full-resolution view!
 
 ## 🛒 Hardware Bill of Materials (BOM) & Purchase Links
 
-Below is the list of hardware components required for this build, along with referral links to purchase them on AliExpress:
-
-| Component | Function / Measurement | Interface | Address / Default Pin | Purchase Link |
-|---|---|---|---|---|
-| **ESP8266 NodeMCU v3** (or ESP-12E) | Main Microcontroller | — | — | [🛒 Buy on AliExpress](https://s.click.aliexpress.com/e/_c35pmlcL) |
-| **AHT20 + BMP280 Module** | Temp, Humidity & Pressure | I2C | `0x38` / `0x76` | [🛒 Buy on AliExpress](https://s.click.aliexpress.com/e/_c4eIj6iL) |
-| **ENS160 Sensor** | Air Quality (TVOC, eCO2, AQI) | I2C | `0x53` or `0x52` | [🛒 Buy on AliExpress](https://s.click.aliexpress.com/e/_c3cfxi5h) |
-| **AS5600 Magnetic Encoder** | Contactless Wind Direction Vane | I2C | `0x36` | [🛒 Buy on AliExpress](https://s.click.aliexpress.com/e/_c3MPeZFv) |
-| **BH1750 Lux Sensor** | Ambient Light / Luminosity | I2C | `0x23` | [🛒 Buy on AliExpress](https://s.click.aliexpress.com/e/_c3y4FY0P) |
-| **A3144 Hall Sensor** | Anemometer & Rain Bucket Pulses | GPIO Interrupt | GPIO 12 & GPIO 14 | [🛒 Buy on AliExpress](https://s.click.aliexpress.com/e/_c3e8m5mR) |
-| **608Z Ball Bearings** | Low-Friction Bearings (Wind Speed & Dir) | Mechanical | — | [🛒 Buy on AliExpress](https://s.click.aliexpress.com/e/_c2JGdVCF) |
-| **5V Power Supply Module** | System Power Supply | Power | 5V 1A / Vin | [🛒 Buy on AliExpress](https://s.click.aliexpress.com/e/_c43AFMgx) |
-| **Counterweight** | Place inside of the weather vane | Mechanical | — | [🛒 Buy on AliExpress](https://s.click.aliexpress.com/e/_c2Q74791) |
+The Bill of Materials can be found [here](BoM.md)
 
 
 Note: The entire system draws a maximum of 500mA. You can safely power it by harvesting the internal board of any standard 5V/1A (or higher) smartphone charger.
 ---
 
 ## 🖨️ 3D Printing & Mechanical Assembly
+
+A complete assambly guide can be found [here](Assembly.md)
 
 ### 🖨️ 3D Printed Models (MakerWorld)
 All 3D printable STL files and print profiles for the enclosures, radiation shields, sensor arms, and mounting brackets are hosted on MakerWorld:
