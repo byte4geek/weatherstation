@@ -20,6 +20,9 @@
 #if WEATHER_UPLOAD_WINDY
 #include "windy_uploader.h"
 #endif
+#if WEATHER_UPLOAD_WOW_BE
+#include "wow_be_uploader.h"
+#endif
 #endif
 #if WEATHER_UPLOAD_WUNDERGROUND || WEATHER_UPLOAD_PWSWEATHER
 #include "wu_uploader.h"
@@ -87,6 +90,10 @@ ServiceRuntime windy_runtime = {};
 AwekasConfig awekas = {};
 ServiceRuntime awekas_runtime = {};
 #endif
+#if WEATHER_UPLOAD_WOW_BE
+ServiceConfig wow_be = {};
+ServiceRuntime wow_be_runtime = {};
+#endif
 UploadMetricsTracker upload_metrics;
 #if WEATHER_UPLOAD_CWOP
 CwopConfig cwop = {};
@@ -123,6 +130,9 @@ bool any_upload_service_enabled() {
 #endif
 #if WEATHER_UPLOAD_AWEKAS
     enabled = enabled || awekas.enabled;
+#endif
+#if WEATHER_UPLOAD_WOW_BE
+    enabled = enabled || wow_be.enabled;
 #endif
     return enabled;
 }
@@ -353,6 +363,29 @@ void run_awekas(const WeatherObservation& observation) {
     if (result.success) awekas_runtime.last_success_utc = observation.timestamp_utc;
 }
 #endif
+
+#if WEATHER_UPLOAD_WOW_BE
+void run_wow_be(const WeatherObservation& observation) {
+    const unsigned long interval_ms = static_cast<unsigned long>(wow_be.interval_seconds) * 1000UL;
+    const unsigned long now_ms = millis();
+    bool due = wow_be_runtime.last_attempt_ms == 0 || now_ms - wow_be_runtime.last_attempt_ms >= interval_ms;
+    if (!wow_be_runtime.test_requested && (!wow_be.enabled || !due)) return;
+    wow_be_runtime.test_requested = false;
+    wow_be_runtime.last_attempt_ms = now_ms;
+    wow_be_runtime.last_attempt_utc = observation.timestamp_utc;
+    if (wow_be.station_id.length() == 0 || wow_be.station_key.length() == 0) {
+        wow_be_runtime.last_http_status = 0;
+        wow_be_runtime.last_message = "site ID or authentication key missing";
+        app_log("[Weather Services] WOW-BE skipped: site ID or authentication key missing.");
+        return;
+    }
+    WowBeUploadResult result = upload_wow_be_observation(
+        wow_be.station_id, wow_be.station_key, observation);
+    wow_be_runtime.last_http_status = result.http_status;
+    wow_be_runtime.last_message = result.message;
+    if (result.success) wow_be_runtime.last_success_utc = observation.timestamp_utc;
+}
+#endif
 #endif
 }
 
@@ -402,6 +435,12 @@ void setup_weather_services() {
     awekas.longitude = prefs.getFloat("awk_lon", NAN);
     awekas.interval_seconds = safe_interval(prefs.getInt("awk_int", 300), 300);
 #endif
+#if WEATHER_UPLOAD_WOW_BE
+    wow_be.enabled = prefs.getBool("wow_on", false);
+    wow_be.station_id = prefs.getString("wow_id", "");
+    wow_be.station_key = prefs.getString("wow_key", "");
+    wow_be.interval_seconds = safe_interval(prefs.getInt("wow_int", 300));
+#endif
     prefs.end();
 
     if (any_upload_service_enabled()) activate_upload_metrics();
@@ -427,6 +466,10 @@ void setup_weather_services() {
 #if WEATHER_UPLOAD_AWEKAS
     awekas_runtime.last_attempt_ms = millis() -
         static_cast<unsigned long>(awekas.interval_seconds - 150) * 1000UL;
+#endif
+#if WEATHER_UPLOAD_WOW_BE
+    wow_be_runtime.last_attempt_ms = millis() -
+        static_cast<unsigned long>(wow_be.interval_seconds - 30) * 1000UL;
 #endif
 #endif
 }
@@ -456,6 +499,9 @@ void handle_weather_services() {
 #endif
 #if WEATHER_UPLOAD_AWEKAS
     run_awekas(observation);
+#endif
+#if WEATHER_UPLOAD_WOW_BE
+    run_wow_be(observation);
 #endif
 #endif
 }
@@ -503,6 +549,9 @@ void append_weather_services_config(JsonDocument& doc, bool include_secrets) {
     if (isfinite(awekas.latitude)) awekas_json["latitude"] = awekas.latitude;
     if (isfinite(awekas.longitude)) awekas_json["longitude"] = awekas.longitude;
     awekas_json["interval"] = awekas.interval_seconds;
+#endif
+#if WEATHER_UPLOAD_WOW_BE
+    append_service(services["wow_be"].to<JsonObject>(), wow_be, include_secrets);
 #endif
 #if !WEATHER_UPLOAD_ANY
     (void)include_secrets;
@@ -593,6 +642,20 @@ void save_weather_services_config(JsonVariantConst config) {
         settings.putInt("awk_int", awekas.interval_seconds);
     }
 #endif
+#if WEATHER_UPLOAD_WOW_BE
+    JsonVariantConst wow_be_json = config["wow_be"];
+    if (!wow_be_json.isNull()) {
+        wow_be.enabled = wow_be_json["enabled"] | false;
+        wow_be.station_id = wow_be_json["station_id"] | "";
+        wow_be.interval_seconds = safe_interval(wow_be_json["interval"] | 300);
+        String new_key = wow_be_json["station_key"] | "";
+        if (new_key.length() > 0) wow_be.station_key = new_key;
+        settings.putBool("wow_on", wow_be.enabled);
+        settings.putString("wow_id", wow_be.station_id);
+        settings.putString("wow_key", wow_be.station_key);
+        settings.putInt("wow_int", wow_be.interval_seconds);
+    }
+#endif
     settings.end();
 #else
     (void)config;
@@ -642,6 +705,13 @@ bool queue_weather_service_test(WeatherServiceId service) {
         return true;
     }
 #endif
+#if WEATHER_UPLOAD_WOW_BE
+    if (service == WeatherServiceId::WowBe) {
+        activate_upload_metrics();
+        wow_be_runtime.test_requested = true;
+        return true;
+    }
+#endif
     (void)service;
     return false;
 }
@@ -665,5 +735,8 @@ void append_weather_services_status(JsonDocument& doc) {
 #endif
 #if WEATHER_UPLOAD_AWEKAS
     append_runtime(services["awekas"].to<JsonObject>(), awekas_runtime);
+#endif
+#if WEATHER_UPLOAD_WOW_BE
+    append_runtime(services["wow_be"].to<JsonObject>(), wow_be_runtime);
 #endif
 }

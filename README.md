@@ -307,7 +307,7 @@ All entities are automatically grouped under a single Home Assistant Device name
 
 ## 🌐 Weather Network Uploads
 
-The station can upload calibrated outdoor observations directly to Weather Underground, PWSWeather, CWOP, Weathercloud, Windy Stations, and AWEKAS. All services are disabled by default. Weather Underground and PWSWeather use the common WU-compatible upload protocol; CWOP uses APRS packets over APRS-IS; Weathercloud and Windy use service-specific HTTPS APIs; AWEKAS uses its legacy direct-link protocol.
+The station can upload calibrated outdoor observations directly to Weather Underground, PWSWeather, CWOP, Weathercloud, Windy Stations, AWEKAS, and Belgium's WOW network. All services are disabled by default. Weather Underground, PWSWeather, and WOW-BE use WU-family protocols; CWOP uses APRS packets over APRS-IS; Weathercloud and Windy use service-specific HTTPS APIs; AWEKAS uses its legacy direct-link protocol.
 
 Configure each service under **Settings → Weather Services**:
 
@@ -362,6 +362,14 @@ The 25-field direct-link payload follows the current WeeWX AWEKAS implementation
 
 > [!CAUTION]
 > AWEKAS currently documents a plain-HTTP upload endpoint. The protocol sends an MD5 password hash in the URL; that hash is replayable and neither it nor the weather data is protected in transit. Use a unique AWEKAS password and enable this service only on a network where that risk is acceptable.
+
+### WOW-BE setup
+
+1. Register a station at the Royal Meteorological Institute of Belgium's WOW site.
+2. Enter the site's ID and authentication key.
+3. Use a 60- to 3600-second interval; the default is five minutes.
+
+Uploads use `https://wow.meteo.be/api/v2/send` with WOW-BE's `siteid` and `siteAuthenticationKey` fields. The formatter omits solar radiation and gust direction because this firmware does not currently produce those observations.
 
 > [!WARNING]
 > A full configuration backup contains Wi-Fi, MQTT, and weather-service credentials. Store backup files securely. The ordinary `/api/config` response does not expose weather-service keys.

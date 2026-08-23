@@ -66,3 +66,11 @@ c++ -std=c++11 -Wall -Wextra -Werror \
   -o /tmp/weatherstation-awekas-tests
 
 /tmp/weatherstation-awekas-tests
+
+c++ -std=c++11 -Wall -Wextra -Werror \
+  -Iinclude \
+  src/wow_be_formatter.cpp \
+  tests/test_wow_be_formatter.cpp \
+  -o /tmp/weatherstation-wow-be-tests
+
+/tmp/weatherstation-wow-be-tests

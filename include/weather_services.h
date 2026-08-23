@@ -20,7 +20,10 @@ enum class WeatherServiceId {
     Windy,
 #endif
 #if WEATHER_UPLOAD_AWEKAS
-    Awekas
+    Awekas,
+#endif
+#if WEATHER_UPLOAD_WOW_BE
+    WowBe
 #endif
 };
 
