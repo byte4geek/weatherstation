@@ -11,6 +11,9 @@
 #include "cwop_uploader.h"
 #endif
 #include "weather_observation.h"
+#if WEATHER_UPLOAD_WEATHERCLOUD
+#include "weathercloud_uploader.h"
+#endif
 #endif
 #if WEATHER_UPLOAD_WUNDERGROUND || WEATHER_UPLOAD_PWSWEATHER
 #include "wu_uploader.h"
@@ -55,6 +58,10 @@ ServiceRuntime wunderground_runtime = {};
 ServiceConfig pwsweather = {};
 ServiceRuntime pwsweather_runtime = {};
 #endif
+#if WEATHER_UPLOAD_WEATHERCLOUD
+ServiceConfig weathercloud = {};
+ServiceRuntime weathercloud_runtime = {};
+#endif
 UploadMetricsTracker upload_metrics;
 #if WEATHER_UPLOAD_CWOP
 CwopConfig cwop = {};
@@ -68,8 +75,8 @@ const char* WU_URL = "https://weatherstation.wunderground.com/weatherstation/upd
 const char* PWS_URL = "https://pwsupdate.pwsweather.com/api/v1/submitwx";
 #endif
 
-uint16_t safe_interval(int interval) {
-    return static_cast<uint16_t>(constrain(interval, 60, 3600));
+uint16_t safe_interval(int interval, int minimum = 60) {
+    return static_cast<uint16_t>(constrain(interval, minimum, 3600));
 }
 
 bool any_upload_service_enabled() {
@@ -82,6 +89,9 @@ bool any_upload_service_enabled() {
 #endif
 #if WEATHER_UPLOAD_CWOP
     enabled = enabled || cwop.enabled;
+#endif
+#if WEATHER_UPLOAD_WEATHERCLOUD
+    enabled = enabled || weathercloud.enabled;
 #endif
     return enabled;
 }
@@ -237,6 +247,32 @@ void run_cwop(const WeatherObservation& observation) {
     if (result.success) cwop_runtime.last_success_utc = observation.timestamp_utc;
 }
 #endif
+
+#if WEATHER_UPLOAD_WEATHERCLOUD
+void run_weathercloud(const WeatherObservation& observation) {
+    const unsigned long interval_ms = static_cast<unsigned long>(weathercloud.interval_seconds) * 1000UL;
+    const unsigned long now_ms = millis();
+    bool due = weathercloud_runtime.last_attempt_ms == 0 ||
+               now_ms - weathercloud_runtime.last_attempt_ms >= interval_ms;
+    if (!weathercloud_runtime.test_requested && (!weathercloud.enabled || !due)) return;
+    weathercloud_runtime.test_requested = false;
+    weathercloud_runtime.last_attempt_ms = now_ms;
+    weathercloud_runtime.last_attempt_utc = observation.timestamp_utc;
+
+    if (weathercloud.station_id.length() == 0 || weathercloud.station_key.length() == 0) {
+        weathercloud_runtime.last_http_status = 0;
+        weathercloud_runtime.last_message = "device ID or key missing";
+        app_log("[Weather Services] Weathercloud skipped: device ID or key missing.");
+        return;
+    }
+
+    WeathercloudUploadResult result = upload_weathercloud_observation(
+        weathercloud.station_id, weathercloud.station_key, observation);
+    weathercloud_runtime.last_http_status = result.http_status;
+    weathercloud_runtime.last_message = result.message;
+    if (result.success) weathercloud_runtime.last_success_utc = observation.timestamp_utc;
+}
+#endif
 #endif
 }
 
@@ -266,6 +302,12 @@ void setup_weather_services() {
     cwop.server = prefs.getString("cwop_host", "cwop.aprs.net");
     cwop.port = static_cast<uint16_t>(constrain(prefs.getInt("cwop_port", 14580), 1, 65535));
 #endif
+#if WEATHER_UPLOAD_WEATHERCLOUD
+    weathercloud.enabled = prefs.getBool("wcl_on", false);
+    weathercloud.station_id = prefs.getString("wcl_id", "");
+    weathercloud.station_key = prefs.getString("wcl_key", "");
+    weathercloud.interval_seconds = safe_interval(prefs.getInt("wcl_int", 600), 600);
+#endif
     prefs.end();
 
     if (any_upload_service_enabled()) activate_upload_metrics();
@@ -279,6 +321,10 @@ void setup_weather_services() {
 #if WEATHER_UPLOAD_CWOP
     cwop_runtime.last_attempt_ms = millis() -
         static_cast<unsigned long>(cwop.interval_seconds - 45) * 1000UL;
+#endif
+#if WEATHER_UPLOAD_WEATHERCLOUD
+    weathercloud_runtime.last_attempt_ms = millis() -
+        static_cast<unsigned long>(weathercloud.interval_seconds - 90) * 1000UL;
 #endif
 #endif
 }
@@ -299,6 +345,9 @@ void handle_weather_services() {
 #endif
 #if WEATHER_UPLOAD_CWOP
     run_cwop(observation);
+#endif
+#if WEATHER_UPLOAD_WEATHERCLOUD
+    run_weathercloud(observation);
 #endif
 #endif
 }
@@ -330,6 +379,9 @@ void append_weather_services_config(JsonDocument& doc, bool include_secrets) {
     cwop_json["interval"] = cwop.interval_seconds;
     cwop_json["server"] = cwop.server;
     cwop_json["port"] = cwop.port;
+#endif
+#if WEATHER_UPLOAD_WEATHERCLOUD
+    append_service(services["weathercloud"].to<JsonObject>(), weathercloud, include_secrets);
 #endif
 #if !WEATHER_UPLOAD_ANY
     (void)include_secrets;
@@ -374,6 +426,20 @@ void save_weather_services_config(JsonVariantConst config) {
         settings.putInt("cwop_port", cwop.port);
     }
 #endif
+#if WEATHER_UPLOAD_WEATHERCLOUD
+    JsonVariantConst weathercloud_json = config["weathercloud"];
+    if (!weathercloud_json.isNull()) {
+        weathercloud.enabled = weathercloud_json["enabled"] | false;
+        weathercloud.station_id = weathercloud_json["station_id"] | "";
+        weathercloud.interval_seconds = safe_interval(weathercloud_json["interval"] | 600, 600);
+        String new_key = weathercloud_json["station_key"] | "";
+        if (new_key.length() > 0) weathercloud.station_key = new_key;
+        settings.putBool("wcl_on", weathercloud.enabled);
+        settings.putString("wcl_id", weathercloud.station_id);
+        settings.putString("wcl_key", weathercloud.station_key);
+        settings.putInt("wcl_int", weathercloud.interval_seconds);
+    }
+#endif
     settings.end();
 #else
     (void)config;
@@ -402,6 +468,13 @@ bool queue_weather_service_test(WeatherServiceId service) {
         return true;
     }
 #endif
+#if WEATHER_UPLOAD_WEATHERCLOUD
+    if (service == WeatherServiceId::Weathercloud) {
+        activate_upload_metrics();
+        weathercloud_runtime.test_requested = true;
+        return true;
+    }
+#endif
     (void)service;
     return false;
 }
@@ -416,5 +489,8 @@ void append_weather_services_status(JsonDocument& doc) {
 #endif
 #if WEATHER_UPLOAD_CWOP
     append_runtime(services["cwop"].to<JsonObject>(), cwop_runtime);
+#endif
+#if WEATHER_UPLOAD_WEATHERCLOUD
+    append_runtime(services["weathercloud"].to<JsonObject>(), weathercloud_runtime);
 #endif
 }

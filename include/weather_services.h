@@ -11,7 +11,10 @@ enum class WeatherServiceId {
     PwsWeather,
 #endif
 #if WEATHER_UPLOAD_CWOP
-    Cwop
+    Cwop,
+#endif
+#if WEATHER_UPLOAD_WEATHERCLOUD
+    Weathercloud
 #endif
 };
 
