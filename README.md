@@ -307,7 +307,7 @@ All entities are automatically grouped under a single Home Assistant Device name
 
 ## 🌐 Weather Network Uploads
 
-The station can upload calibrated outdoor observations directly to Weather Underground, PWSWeather, CWOP, and Weathercloud. All services are disabled by default. Weather Underground and PWSWeather use the common WU-compatible upload protocol; CWOP uses APRS packets over APRS-IS; Weathercloud uses its HTTPS device API.
+The station can upload calibrated outdoor observations directly to Weather Underground, PWSWeather, CWOP, Weathercloud, and Windy Stations. All services are disabled by default. Weather Underground and PWSWeather use the common WU-compatible upload protocol; CWOP uses APRS packets over APRS-IS; Weathercloud and Windy use service-specific HTTPS APIs.
 
 Configure each service under **Settings → Weather Services**:
 
@@ -343,6 +343,14 @@ The CWOP packet includes last-hour (`r`), rolling-24-hour (`p`), and since-midni
 3. Keep the default 600-second interval. Free accounts are rate-limited to one update every 10 minutes.
 
 Weathercloud receives metric values in its required fixed-point representation. The uploader sends current wind as `wspd` and the tracked 10-minute gust as `wspdhi`; it does not claim a 10-minute average that the station does not calculate.
+
+### Windy setup
+
+1. Create a station at Windy Stations and copy its short station ID and station password.
+2. Enter both values under **Windy Stations**.
+3. Keep the default 300-second interval; Windy throttles updates sent more often than every five minutes.
+
+This integration targets `https://stations.windy.com/api/v2/observation/update`, the API introduced in 2026, rather than the retiring legacy endpoint. The station password is carried in a Bearer authorization header, not in the URL. Windy's `precip` field is the last-hour accumulation, so the uploader maps the existing rolling one-hour rain value rather than daily rain.
 
 > [!WARNING]
 > A full configuration backup contains Wi-Fi, MQTT, and weather-service credentials. Store backup files securely. The ordinary `/api/config` response does not expose weather-service keys.

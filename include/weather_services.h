@@ -14,7 +14,10 @@ enum class WeatherServiceId {
     Cwop,
 #endif
 #if WEATHER_UPLOAD_WEATHERCLOUD
-    Weathercloud
+    Weathercloud,
+#endif
+#if WEATHER_UPLOAD_WINDY
+    Windy
 #endif
 };
 

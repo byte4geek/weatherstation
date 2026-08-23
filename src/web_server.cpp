@@ -1267,6 +1267,29 @@ R"rawliteral(
                         <button type="button" class="btn btn-sec" onclick="testWeatherService('weathercloud')">Queue Test Upload</button>
 )rawliteral"
 #endif
+#if WEATHER_UPLOAD_WINDY
+R"rawliteral(
+                        <h4 style="margin: 22px 0 8px;">Windy Stations</h4>
+                        <p style="color: var(--text-muted); font-size: 0.82rem; margin-bottom: 10px;">Uses Windy's 2026 observation API. The password is sent in an HTTPS Authorization header.</p>
+                        <div class="form-group" style="flex-direction: row; justify-content: space-between;">
+                            <label for="conf_wnd_on">Enabled:</label>
+                            <input type="checkbox" id="conf_wnd_on">
+                        </div>
+                        <div class="form-group">
+                            <label for="conf_wnd_id">Station ID:</label>
+                            <input type="text" id="conf_wnd_id" autocomplete="off">
+                        </div>
+                        <div class="form-group">
+                            <label for="conf_wnd_pass">Station Password:</label>
+                            <input type="password" id="conf_wnd_pass" autocomplete="new-password" placeholder="Leave blank to keep current password">
+                        </div>
+                        <div class="form-group">
+                            <label for="conf_wnd_int">Upload Interval (seconds):</label>
+                            <input type="number" id="conf_wnd_int" min="300" max="3600">
+                        </div>
+                        <button type="button" class="btn btn-sec" onclick="testWeatherService('windy')">Queue Test Upload</button>
+)rawliteral"
+#endif
 R"rawliteral(
                     </div>
 )rawliteral"
@@ -1970,6 +1993,13 @@ R"rawliteral(                    const wcl = (c.weather_services || {}).weatherc
                     document.getElementById('conf_wcl_int').value = wcl.interval || 600;
 )rawliteral"
 #endif
+#if WEATHER_UPLOAD_WINDY
+R"rawliteral(                    const wnd = (c.weather_services || {}).windy || {};
+                    document.getElementById('conf_wnd_on').checked = !!wnd.enabled;
+                    document.getElementById('conf_wnd_id').value = wnd.station_id || '';
+                    document.getElementById('conf_wnd_int').value = wnd.interval || 300;
+)rawliteral"
+#endif
 R"rawliteral(
 
                     toggleDhcpFields(c.dhcp);
@@ -2075,6 +2105,16 @@ R"rawliteral(
                         station_id: document.getElementById('conf_wcl_id').value,
                         station_key: document.getElementById('conf_wcl_key').value,
                         interval: parseInt(document.getElementById('conf_wcl_int').value)
+                    },
+)rawliteral"
+#endif
+#if WEATHER_UPLOAD_WINDY
+R"rawliteral(
+                    windy: {
+                        enabled: document.getElementById('conf_wnd_on').checked,
+                        station_id: document.getElementById('conf_wnd_id').value,
+                        station_key: document.getElementById('conf_wnd_pass').value,
+                        interval: parseInt(document.getElementById('conf_wnd_int').value)
                     },
 )rawliteral"
 #endif
@@ -3019,6 +3059,11 @@ void setup_web_server() {
 #if WEATHER_UPLOAD_WEATHERCLOUD
         if (service == "weathercloud") {
             queued = queue_weather_service_test(WeatherServiceId::Weathercloud);
+        }
+#endif
+#if WEATHER_UPLOAD_WINDY
+        if (service == "windy") {
+            queued = queue_weather_service_test(WeatherServiceId::Windy);
         }
 #endif
         if (!queued) {
