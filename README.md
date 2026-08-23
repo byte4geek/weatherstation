@@ -307,7 +307,7 @@ All entities are automatically grouped under a single Home Assistant Device name
 
 ## 🌐 Weather Network Uploads
 
-The station can upload calibrated outdoor observations directly to Weather Underground, PWSWeather, CWOP, Weathercloud, and Windy Stations. All services are disabled by default. Weather Underground and PWSWeather use the common WU-compatible upload protocol; CWOP uses APRS packets over APRS-IS; Weathercloud and Windy use service-specific HTTPS APIs.
+The station can upload calibrated outdoor observations directly to Weather Underground, PWSWeather, CWOP, Weathercloud, Windy Stations, and AWEKAS. All services are disabled by default. Weather Underground and PWSWeather use the common WU-compatible upload protocol; CWOP uses APRS packets over APRS-IS; Weathercloud and Windy use service-specific HTTPS APIs; AWEKAS uses its legacy direct-link protocol.
 
 Configure each service under **Settings → Weather Services**:
 
@@ -351,6 +351,17 @@ Weathercloud receives metric values in its required fixed-point representation. 
 3. Keep the default 300-second interval; Windy throttles updates sent more often than every five minutes.
 
 This integration targets `https://stations.windy.com/api/v2/observation/update`, the API introduced in 2026, rather than the retiring legacy endpoint. The station password is carried in a Bearer authorization header, not in the URL. Windy's `precip` field is the last-hour accumulation, so the uploader maps the existing rolling one-hour rain value rather than daily rain.
+
+### AWEKAS setup
+
+1. Register the station at AWEKAS and enter the account username and password.
+2. Enter the station's exact decimal latitude and longitude.
+3. Keep the default 300-second interval; AWEKAS requests no more than one upload every five minutes.
+
+The 25-field direct-link payload follows the current WeeWX AWEKAS implementation. Unsupported radiation, UV, brightness, sunshine, soil-temperature, and instantaneous rain-rate fields remain empty instead of being filled with misleading values.
+
+> [!CAUTION]
+> AWEKAS currently documents a plain-HTTP upload endpoint. The protocol sends an MD5 password hash in the URL; that hash is replayable and neither it nor the weather data is protected in transit. Use a unique AWEKAS password and enable this service only on a network where that risk is acceptable.
 
 > [!WARNING]
 > A full configuration backup contains Wi-Fi, MQTT, and weather-service credentials. Store backup files securely. The ordinary `/api/config` response does not expose weather-service keys.

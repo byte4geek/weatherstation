@@ -1290,6 +1290,37 @@ R"rawliteral(
                         <button type="button" class="btn btn-sec" onclick="testWeatherService('windy')">Queue Test Upload</button>
 )rawliteral"
 #endif
+#if WEATHER_UPLOAD_AWEKAS
+R"rawliteral(
+                        <h4 style="margin: 22px 0 8px;">AWEKAS</h4>
+                        <p style="color: var(--text-muted); font-size: 0.82rem; margin-bottom: 10px;">AWEKAS's current upload endpoint is plain HTTP; see the README security warning before enabling it.</p>
+                        <div class="form-group" style="flex-direction: row; justify-content: space-between;">
+                            <label for="conf_awk_on">Enabled:</label>
+                            <input type="checkbox" id="conf_awk_on">
+                        </div>
+                        <div class="form-group">
+                            <label for="conf_awk_user">Username:</label>
+                            <input type="text" id="conf_awk_user" autocomplete="off">
+                        </div>
+                        <div class="form-group">
+                            <label for="conf_awk_pass">Password:</label>
+                            <input type="password" id="conf_awk_pass" autocomplete="new-password" placeholder="Leave blank to keep current password">
+                        </div>
+                        <div class="form-group">
+                            <label for="conf_awk_lat">Latitude (decimal degrees):</label>
+                            <input type="number" id="conf_awk_lat" step="0.00001" min="-90" max="90">
+                        </div>
+                        <div class="form-group">
+                            <label for="conf_awk_lon">Longitude (decimal degrees):</label>
+                            <input type="number" id="conf_awk_lon" step="0.00001" min="-180" max="180">
+                        </div>
+                        <div class="form-group">
+                            <label for="conf_awk_int">Upload Interval (seconds):</label>
+                            <input type="number" id="conf_awk_int" min="300" max="3600">
+                        </div>
+                        <button type="button" class="btn btn-sec" onclick="testWeatherService('awekas')">Queue Test Upload</button>
+)rawliteral"
+#endif
 R"rawliteral(
                     </div>
 )rawliteral"
@@ -2000,6 +2031,15 @@ R"rawliteral(                    const wnd = (c.weather_services || {}).windy ||
                     document.getElementById('conf_wnd_int').value = wnd.interval || 300;
 )rawliteral"
 #endif
+#if WEATHER_UPLOAD_AWEKAS
+R"rawliteral(                    const awk = (c.weather_services || {}).awekas || {};
+                    document.getElementById('conf_awk_on').checked = !!awk.enabled;
+                    document.getElementById('conf_awk_user').value = awk.username || '';
+                    document.getElementById('conf_awk_lat').value = (awk.latitude !== undefined) ? awk.latitude : '';
+                    document.getElementById('conf_awk_lon').value = (awk.longitude !== undefined) ? awk.longitude : '';
+                    document.getElementById('conf_awk_int').value = awk.interval || 300;
+)rawliteral"
+#endif
 R"rawliteral(
 
                     toggleDhcpFields(c.dhcp);
@@ -2115,6 +2155,18 @@ R"rawliteral(
                         station_id: document.getElementById('conf_wnd_id').value,
                         station_key: document.getElementById('conf_wnd_pass').value,
                         interval: parseInt(document.getElementById('conf_wnd_int').value)
+                    },
+)rawliteral"
+#endif
+#if WEATHER_UPLOAD_AWEKAS
+R"rawliteral(
+                    awekas: {
+                        enabled: document.getElementById('conf_awk_on').checked,
+                        username: document.getElementById('conf_awk_user').value,
+                        password: document.getElementById('conf_awk_pass').value,
+                        latitude: parseFloat(document.getElementById('conf_awk_lat').value),
+                        longitude: parseFloat(document.getElementById('conf_awk_lon').value),
+                        interval: parseInt(document.getElementById('conf_awk_int').value)
                     },
 )rawliteral"
 #endif
@@ -3064,6 +3116,11 @@ void setup_web_server() {
 #if WEATHER_UPLOAD_WINDY
         if (service == "windy") {
             queued = queue_weather_service_test(WeatherServiceId::Windy);
+        }
+#endif
+#if WEATHER_UPLOAD_AWEKAS
+        if (service == "awekas") {
+            queued = queue_weather_service_test(WeatherServiceId::Awekas);
         }
 #endif
         if (!queued) {
