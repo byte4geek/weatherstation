@@ -26,3 +26,11 @@ c++ -std=c++11 -Wall -Wextra -Werror \
   -o /tmp/weatherstation-feature-multiple-tests
 
 /tmp/weatherstation-feature-multiple-tests
+
+c++ -std=c++11 -Wall -Wextra -Werror \
+  -Iinclude \
+  src/upload_metrics.cpp \
+  tests/test_upload_metrics.cpp \
+  -o /tmp/weatherstation-upload-metrics-tests
+
+/tmp/weatherstation-upload-metrics-tests
