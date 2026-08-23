@@ -58,3 +58,11 @@ c++ -std=c++11 -Wall -Wextra -Werror \
   -o /tmp/weatherstation-windy-tests
 
 /tmp/weatherstation-windy-tests
+
+c++ -std=c++11 -Wall -Wextra -Werror \
+  -Iinclude \
+  src/awekas_formatter.cpp \
+  tests/test_awekas_formatter.cpp \
+  -o /tmp/weatherstation-awekas-tests
+
+/tmp/weatherstation-awekas-tests

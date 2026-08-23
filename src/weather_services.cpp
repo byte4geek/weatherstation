@@ -6,6 +6,9 @@
 #include <time.h>
 
 #include "globals.h"
+#if WEATHER_UPLOAD_AWEKAS
+#include "awekas_uploader.h"
+#endif
 #include "upload_metrics.h"
 #if WEATHER_UPLOAD_CWOP
 #include "cwop_uploader.h"
@@ -53,6 +56,17 @@ struct CwopConfig {
 };
 #endif
 
+#if WEATHER_UPLOAD_AWEKAS
+struct AwekasConfig {
+    bool enabled;
+    String username;
+    String password;
+    float latitude;
+    float longitude;
+    uint16_t interval_seconds;
+};
+#endif
+
 #if WEATHER_UPLOAD_WUNDERGROUND
 ServiceConfig wunderground = {};
 ServiceRuntime wunderground_runtime = {};
@@ -68,6 +82,10 @@ ServiceRuntime weathercloud_runtime = {};
 #if WEATHER_UPLOAD_WINDY
 ServiceConfig windy = {};
 ServiceRuntime windy_runtime = {};
+#endif
+#if WEATHER_UPLOAD_AWEKAS
+AwekasConfig awekas = {};
+ServiceRuntime awekas_runtime = {};
 #endif
 UploadMetricsTracker upload_metrics;
 #if WEATHER_UPLOAD_CWOP
@@ -102,6 +120,9 @@ bool any_upload_service_enabled() {
 #endif
 #if WEATHER_UPLOAD_WINDY
     enabled = enabled || windy.enabled;
+#endif
+#if WEATHER_UPLOAD_AWEKAS
+    enabled = enabled || awekas.enabled;
 #endif
     return enabled;
 }
@@ -306,6 +327,32 @@ void run_windy(const WeatherObservation& observation) {
     if (result.success) windy_runtime.last_success_utc = observation.timestamp_utc;
 }
 #endif
+
+#if WEATHER_UPLOAD_AWEKAS
+void run_awekas(const WeatherObservation& observation) {
+    const unsigned long interval_ms = static_cast<unsigned long>(awekas.interval_seconds) * 1000UL;
+    const unsigned long now_ms = millis();
+    bool due = awekas_runtime.last_attempt_ms == 0 || now_ms - awekas_runtime.last_attempt_ms >= interval_ms;
+    if (!awekas_runtime.test_requested && (!awekas.enabled || !due)) return;
+    awekas_runtime.test_requested = false;
+    awekas_runtime.last_attempt_ms = now_ms;
+    awekas_runtime.last_attempt_utc = observation.timestamp_utc;
+    if (awekas.username.length() == 0 || awekas.password.length() == 0 ||
+        !isfinite(awekas.latitude) || !isfinite(awekas.longitude) ||
+        awekas.latitude < -90.0f || awekas.latitude > 90.0f ||
+        awekas.longitude < -180.0f || awekas.longitude > 180.0f) {
+        awekas_runtime.last_http_status = 0;
+        awekas_runtime.last_message = "credentials or valid coordinates missing";
+        app_log("[Weather Services] AWEKAS skipped: credentials or coordinates missing.");
+        return;
+    }
+    AwekasUploadResult result = upload_awekas_observation(
+        awekas.username, awekas.password, awekas.latitude, awekas.longitude, observation);
+    awekas_runtime.last_http_status = result.http_status;
+    awekas_runtime.last_message = result.message;
+    if (result.success) awekas_runtime.last_success_utc = observation.timestamp_utc;
+}
+#endif
 #endif
 }
 
@@ -347,6 +394,14 @@ void setup_weather_services() {
     windy.station_key = prefs.getString("wnd_pass", "");
     windy.interval_seconds = safe_interval(prefs.getInt("wnd_int", 300), 300);
 #endif
+#if WEATHER_UPLOAD_AWEKAS
+    awekas.enabled = prefs.getBool("awk_on", false);
+    awekas.username = prefs.getString("awk_user", "");
+    awekas.password = prefs.getString("awk_pass", "");
+    awekas.latitude = prefs.getFloat("awk_lat", NAN);
+    awekas.longitude = prefs.getFloat("awk_lon", NAN);
+    awekas.interval_seconds = safe_interval(prefs.getInt("awk_int", 300), 300);
+#endif
     prefs.end();
 
     if (any_upload_service_enabled()) activate_upload_metrics();
@@ -368,6 +423,10 @@ void setup_weather_services() {
 #if WEATHER_UPLOAD_WINDY
     windy_runtime.last_attempt_ms = millis() -
         static_cast<unsigned long>(windy.interval_seconds - 120) * 1000UL;
+#endif
+#if WEATHER_UPLOAD_AWEKAS
+    awekas_runtime.last_attempt_ms = millis() -
+        static_cast<unsigned long>(awekas.interval_seconds - 150) * 1000UL;
 #endif
 #endif
 }
@@ -394,6 +453,9 @@ void handle_weather_services() {
 #endif
 #if WEATHER_UPLOAD_WINDY
     run_windy(observation);
+#endif
+#if WEATHER_UPLOAD_AWEKAS
+    run_awekas(observation);
 #endif
 #endif
 }
@@ -431,6 +493,16 @@ void append_weather_services_config(JsonDocument& doc, bool include_secrets) {
 #endif
 #if WEATHER_UPLOAD_WINDY
     append_service(services["windy"].to<JsonObject>(), windy, include_secrets);
+#endif
+#if WEATHER_UPLOAD_AWEKAS
+    JsonObject awekas_json = services["awekas"].to<JsonObject>();
+    awekas_json["enabled"] = awekas.enabled;
+    awekas_json["username"] = awekas.username;
+    awekas_json["has_password"] = awekas.password.length() > 0;
+    if (include_secrets) awekas_json["password"] = awekas.password;
+    if (isfinite(awekas.latitude)) awekas_json["latitude"] = awekas.latitude;
+    if (isfinite(awekas.longitude)) awekas_json["longitude"] = awekas.longitude;
+    awekas_json["interval"] = awekas.interval_seconds;
 #endif
 #if !WEATHER_UPLOAD_ANY
     (void)include_secrets;
@@ -503,6 +575,24 @@ void save_weather_services_config(JsonVariantConst config) {
         settings.putInt("wnd_int", windy.interval_seconds);
     }
 #endif
+#if WEATHER_UPLOAD_AWEKAS
+    JsonVariantConst awekas_json = config["awekas"];
+    if (!awekas_json.isNull()) {
+        awekas.enabled = awekas_json["enabled"] | false;
+        awekas.username = awekas_json["username"] | "";
+        String new_password = awekas_json["password"] | "";
+        if (new_password.length() > 0) awekas.password = new_password;
+        awekas.latitude = awekas_json["latitude"] | NAN;
+        awekas.longitude = awekas_json["longitude"] | NAN;
+        awekas.interval_seconds = safe_interval(awekas_json["interval"] | 300, 300);
+        settings.putBool("awk_on", awekas.enabled);
+        settings.putString("awk_user", awekas.username);
+        settings.putString("awk_pass", awekas.password);
+        settings.putFloat("awk_lat", awekas.latitude);
+        settings.putFloat("awk_lon", awekas.longitude);
+        settings.putInt("awk_int", awekas.interval_seconds);
+    }
+#endif
     settings.end();
 #else
     (void)config;
@@ -545,6 +635,13 @@ bool queue_weather_service_test(WeatherServiceId service) {
         return true;
     }
 #endif
+#if WEATHER_UPLOAD_AWEKAS
+    if (service == WeatherServiceId::Awekas) {
+        activate_upload_metrics();
+        awekas_runtime.test_requested = true;
+        return true;
+    }
+#endif
     (void)service;
     return false;
 }
@@ -565,5 +662,8 @@ void append_weather_services_status(JsonDocument& doc) {
 #endif
 #if WEATHER_UPLOAD_WINDY
     append_runtime(services["windy"].to<JsonObject>(), windy_runtime);
+#endif
+#if WEATHER_UPLOAD_AWEKAS
+    append_runtime(services["awekas"].to<JsonObject>(), awekas_runtime);
 #endif
 }
