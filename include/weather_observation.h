@@ -14,6 +14,7 @@ struct WeatherObservation {
     bool has_wind_direction;
     bool has_wind_gust;
     bool has_rain_hour;
+    bool has_rain_24h;
     bool has_rain_today;
 
     float temperature_c;
@@ -24,6 +25,7 @@ struct WeatherObservation {
     float wind_direction_deg;
     float wind_gust_10m_kmh;
     float rain_hour_mm;
+    float rain_24h_mm;
     float rain_today_mm;
 };
 
@@ -40,6 +42,7 @@ struct WeatherObservationInput {
     float wind_direction_deg;
     float wind_gust_10m_kmh;
     float rain_hour_mm;
+    float rain_24h_mm;
     float rain_today_mm;
 };
 

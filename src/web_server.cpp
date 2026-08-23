@@ -1202,6 +1202,48 @@ R"rawliteral(
                         <button type="button" class="btn btn-sec" onclick="testWeatherService('pwsweather')">Queue Test Upload</button>
 )rawliteral"
 #endif
+#if WEATHER_UPLOAD_CWOP
+R"rawliteral(
+                        <h4 style="margin: 22px 0 8px;">CWOP / APRS-IS</h4>
+                        <p style="color: var(--text-muted); font-size: 0.82rem; margin-bottom: 10px;">Register for a CWOP ID before enabling. Non-ham CWOP IDs normally use passcode -1.</p>
+                        <div class="form-group" style="flex-direction: row; justify-content: space-between;">
+                            <label for="conf_cwop_on">Enabled:</label>
+                            <input type="checkbox" id="conf_cwop_on">
+                        </div>
+                        <div class="form-group">
+                            <label for="conf_cwop_id">CWOP ID / Callsign:</label>
+                            <input type="text" id="conf_cwop_id" autocomplete="off" placeholder="e.g. CW1234">
+                        </div>
+                        <div class="form-group">
+                            <label for="conf_cwop_pass">APRS-IS Passcode:</label>
+                            <input type="password" id="conf_cwop_pass" autocomplete="new-password" placeholder="Leave blank to keep current (-1 for non-ham ID)">
+                        </div>
+                        <div class="form-group">
+                            <label for="conf_cwop_lat">Latitude (decimal degrees):</label>
+                            <input type="number" id="conf_cwop_lat" step="0.00001" min="-90" max="90">
+                        </div>
+                        <div class="form-group">
+                            <label for="conf_cwop_lon">Longitude (decimal degrees):</label>
+                            <input type="number" id="conf_cwop_lon" step="0.00001" min="-180" max="180">
+                        </div>
+                        <div class="form-group">
+                            <label for="conf_cwop_int">Upload Interval (seconds):</label>
+                            <input type="number" id="conf_cwop_int" min="300" max="3600">
+                        </div>
+                        <details style="margin-bottom: 12px;">
+                            <summary style="cursor: pointer; color: var(--text-muted);">Advanced server settings</summary>
+                            <div class="form-group" style="margin-top: 10px;">
+                                <label for="conf_cwop_host">Server:</label>
+                                <input type="text" id="conf_cwop_host">
+                            </div>
+                            <div class="form-group">
+                                <label for="conf_cwop_port">Port:</label>
+                                <input type="number" id="conf_cwop_port" min="1" max="65535">
+                            </div>
+                        </details>
+                        <button type="button" class="btn btn-sec" onclick="testWeatherService('cwop')">Queue Test Upload</button>
+)rawliteral"
+#endif
 R"rawliteral(
                     </div>
 )rawliteral"
@@ -1887,6 +1929,17 @@ R"rawliteral(                    const pws = (c.weather_services || {}).pwsweath
                     document.getElementById('conf_pws_int').value = pws.interval || 60;
 )rawliteral"
 #endif
+#if WEATHER_UPLOAD_CWOP
+R"rawliteral(                    const cwop = (c.weather_services || {}).cwop || {};
+                    document.getElementById('conf_cwop_on').checked = !!cwop.enabled;
+                    document.getElementById('conf_cwop_id').value = cwop.station_id || '';
+                    document.getElementById('conf_cwop_lat').value = (cwop.latitude !== undefined) ? cwop.latitude : '';
+                    document.getElementById('conf_cwop_lon').value = (cwop.longitude !== undefined) ? cwop.longitude : '';
+                    document.getElementById('conf_cwop_int').value = cwop.interval || 300;
+                    document.getElementById('conf_cwop_host').value = cwop.server || 'cwop.aprs.net';
+                    document.getElementById('conf_cwop_port').value = cwop.port || 14580;
+)rawliteral"
+#endif
 R"rawliteral(
 
                     toggleDhcpFields(c.dhcp);
@@ -1968,6 +2021,20 @@ R"rawliteral(
                         station_id: document.getElementById('conf_pws_id').value,
                         station_key: document.getElementById('conf_pws_key').value,
                         interval: parseInt(document.getElementById('conf_pws_int').value)
+                    },
+)rawliteral"
+#endif
+#if WEATHER_UPLOAD_CWOP
+R"rawliteral(
+                    cwop: {
+                        enabled: document.getElementById('conf_cwop_on').checked,
+                        station_id: document.getElementById('conf_cwop_id').value,
+                        passcode: document.getElementById('conf_cwop_pass').value,
+                        latitude: parseFloat(document.getElementById('conf_cwop_lat').value),
+                        longitude: parseFloat(document.getElementById('conf_cwop_lon').value),
+                        interval: parseInt(document.getElementById('conf_cwop_int').value),
+                        server: document.getElementById('conf_cwop_host').value,
+                        port: parseInt(document.getElementById('conf_cwop_port').value)
                     },
 )rawliteral"
 #endif
@@ -2902,6 +2969,11 @@ void setup_web_server() {
 #if WEATHER_UPLOAD_PWSWEATHER
         if (service == "pwsweather") {
             queued = queue_weather_service_test(WeatherServiceId::PwsWeather);
+        }
+#endif
+#if WEATHER_UPLOAD_CWOP
+        if (service == "cwop") {
+            queued = queue_weather_service_test(WeatherServiceId::Cwop);
         }
 #endif
         if (!queued) {

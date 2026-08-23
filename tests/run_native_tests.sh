@@ -34,3 +34,11 @@ c++ -std=c++11 -Wall -Wextra -Werror \
   -o /tmp/weatherstation-upload-metrics-tests
 
 /tmp/weatherstation-upload-metrics-tests
+
+c++ -std=c++11 -Wall -Wextra -Werror \
+  -Iinclude \
+  src/cwop_formatter.cpp \
+  tests/test_cwop_formatter.cpp \
+  -o /tmp/weatherstation-cwop-tests
+
+/tmp/weatherstation-cwop-tests

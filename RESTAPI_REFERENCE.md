@@ -218,7 +218,7 @@ Returns last-attempt time, last-success time, HTTP status, and a redacted result
 
 ### `POST /api/weather_services/test?service=<name>`
 
-Queues an upload using saved settings and the next complete observation snapshot. Valid service names are `wunderground` and `pwsweather`.
+Queues an upload using saved settings and the next complete observation snapshot. Valid service names are `wunderground`, `pwsweather`, and `cwop`.
 
 #### Response: `202 Accepted`
 

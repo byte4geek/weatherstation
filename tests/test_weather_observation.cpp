@@ -25,6 +25,7 @@ int main() {
     input.wind_direction_deg = 359.0f;
     input.wind_gust_10m_kmh = 20.0f;
     input.rain_hour_mm = 1.2f;
+    input.rain_24h_mm = 2.3f;
     input.rain_today_mm = 3.4f;
 
     WeatherObservation observation = make_weather_observation(input);

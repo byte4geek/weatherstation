@@ -8,7 +8,10 @@ enum class WeatherServiceId {
     Wunderground,
 #endif
 #if WEATHER_UPLOAD_PWSWEATHER
-    PwsWeather
+    PwsWeather,
+#endif
+#if WEATHER_UPLOAD_CWOP
+    Cwop
 #endif
 };
 
