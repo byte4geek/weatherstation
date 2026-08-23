@@ -38,6 +38,7 @@ WeatherObservation make_weather_observation(const WeatherObservationInput& input
     observation.has_wind_gust = valid(input.wind_gust_10m_kmh) &&
                                 input.wind_gust_10m_kmh >= 0.0f;
     observation.has_rain_hour = valid(input.rain_hour_mm) && input.rain_hour_mm >= 0.0f;
+    observation.has_rain_24h = valid(input.rain_24h_mm) && input.rain_24h_mm >= 0.0f;
     observation.has_rain_today = valid(input.rain_today_mm) && input.rain_today_mm >= 0.0f;
 
     observation.temperature_c = input.temperature_c;
@@ -47,6 +48,7 @@ WeatherObservation make_weather_observation(const WeatherObservationInput& input
     observation.wind_direction_deg = input.wind_direction_deg;
     observation.wind_gust_10m_kmh = input.wind_gust_10m_kmh;
     observation.rain_hour_mm = input.rain_hour_mm;
+    observation.rain_24h_mm = input.rain_24h_mm;
     observation.rain_today_mm = input.rain_today_mm;
 
     observation.dew_point_c = calculate_dew_point_c(input.temperature_c, input.humidity_pct);

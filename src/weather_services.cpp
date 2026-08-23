@@ -2,10 +2,14 @@
 
 #if WEATHER_UPLOAD_ANY
 #include <ESP8266WiFi.h>
+#include <math.h>
 #include <time.h>
 
 #include "globals.h"
 #include "upload_metrics.h"
+#if WEATHER_UPLOAD_CWOP
+#include "cwop_uploader.h"
+#endif
 #include "weather_observation.h"
 #endif
 #if WEATHER_UPLOAD_WUNDERGROUND || WEATHER_UPLOAD_PWSWEATHER
@@ -30,6 +34,19 @@ struct ServiceRuntime {
     bool test_requested;
 };
 
+#if WEATHER_UPLOAD_CWOP
+struct CwopConfig {
+    bool enabled;
+    String station_id;
+    String passcode;
+    float latitude;
+    float longitude;
+    uint16_t interval_seconds;
+    String server;
+    uint16_t port;
+};
+#endif
+
 #if WEATHER_UPLOAD_WUNDERGROUND
 ServiceConfig wunderground = {};
 ServiceRuntime wunderground_runtime = {};
@@ -39,6 +56,10 @@ ServiceConfig pwsweather = {};
 ServiceRuntime pwsweather_runtime = {};
 #endif
 UploadMetricsTracker upload_metrics;
+#if WEATHER_UPLOAD_CWOP
+CwopConfig cwop = {};
+ServiceRuntime cwop_runtime = {};
+#endif
 
 #if WEATHER_UPLOAD_WUNDERGROUND
 const char* WU_URL = "https://weatherstation.wunderground.com/weatherstation/updateweatherstation.php";
@@ -58,6 +79,9 @@ bool any_upload_service_enabled() {
 #endif
 #if WEATHER_UPLOAD_PWSWEATHER
     enabled = enabled || pwsweather.enabled;
+#endif
+#if WEATHER_UPLOAD_CWOP
+    enabled = enabled || cwop.enabled;
 #endif
     return enabled;
 }
@@ -115,6 +139,7 @@ WeatherObservation capture_observation() {
     input.wind_direction_deg = wind_dir_deg;
     input.wind_gust_10m_kmh = upload_metrics.gust_10m_kmh();
     input.rain_hour_mm = rolling_rain_hour;
+    input.rain_24h_mm = rolling_rain_day;
     input.rain_today_mm = upload_metrics.rain_today_tips() * rain_calibration;
     return make_weather_observation(input);
 }
@@ -184,6 +209,34 @@ void append_runtime(JsonObject target, const ServiceRuntime& runtime) {
     target["http_status"] = runtime.last_http_status;
     target["message"] = runtime.last_message;
 }
+
+#if WEATHER_UPLOAD_CWOP
+void run_cwop(const WeatherObservation& observation) {
+    const unsigned long interval_ms = static_cast<unsigned long>(cwop.interval_seconds) * 1000UL;
+    const unsigned long now_ms = millis();
+    bool due = cwop_runtime.last_attempt_ms == 0 ||
+               now_ms - cwop_runtime.last_attempt_ms >= interval_ms;
+    if (!cwop_runtime.test_requested && (!cwop.enabled || !due)) return;
+    cwop_runtime.test_requested = false;
+    cwop_runtime.last_attempt_ms = now_ms;
+    cwop_runtime.last_attempt_utc = observation.timestamp_utc;
+
+    if (cwop.station_id.length() == 0 || !isfinite(cwop.latitude) ||
+        !isfinite(cwop.longitude) || cwop.latitude < -90.0f || cwop.latitude > 90.0f ||
+        cwop.longitude < -180.0f || cwop.longitude > 180.0f) {
+        cwop_runtime.last_message = "station ID or valid coordinates missing";
+        app_log("[Weather Services] CWOP skipped: station ID or coordinates missing.");
+        return;
+    }
+
+    CwopUploadResult result = upload_cwop_observation(
+        cwop.server, cwop.port, cwop.station_id, cwop.passcode,
+        cwop.latitude, cwop.longitude, observation);
+    cwop_runtime.last_http_status = 0;
+    cwop_runtime.last_message = result.message;
+    if (result.success) cwop_runtime.last_success_utc = observation.timestamp_utc;
+}
+#endif
 #endif
 }
 
@@ -202,6 +255,17 @@ void setup_weather_services() {
     pwsweather.station_key = prefs.getString("pws_key", "");
     pwsweather.interval_seconds = safe_interval(prefs.getInt("pws_int", 60));
 #endif
+#if WEATHER_UPLOAD_CWOP
+    cwop.enabled = prefs.getBool("cwop_on", false);
+    cwop.station_id = prefs.getString("cwop_id", "");
+    cwop.station_id.toUpperCase();
+    cwop.passcode = prefs.getString("cwop_pass", "-1");
+    cwop.latitude = prefs.getFloat("cwop_lat", NAN);
+    cwop.longitude = prefs.getFloat("cwop_lon", NAN);
+    cwop.interval_seconds = static_cast<uint16_t>(constrain(prefs.getInt("cwop_int", 300), 300, 3600));
+    cwop.server = prefs.getString("cwop_host", "cwop.aprs.net");
+    cwop.port = static_cast<uint16_t>(constrain(prefs.getInt("cwop_port", 14580), 1, 65535));
+#endif
     prefs.end();
 
     if (any_upload_service_enabled()) activate_upload_metrics();
@@ -211,6 +275,10 @@ void setup_weather_services() {
     // destination also starts at boot.
     pwsweather_runtime.last_attempt_ms = millis() -
         static_cast<unsigned long>(pwsweather.interval_seconds - 30) * 1000UL;
+#endif
+#if WEATHER_UPLOAD_CWOP
+    cwop_runtime.last_attempt_ms = millis() -
+        static_cast<unsigned long>(cwop.interval_seconds - 45) * 1000UL;
 #endif
 #endif
 }
@@ -228,6 +296,9 @@ void handle_weather_services() {
     // Avoid back-to-back TLS allocations unless PWSWeather is explicitly due.
     run_service("PWSWeather", PWS_URL, pwsweather,
                 pwsweather_runtime, observation);
+#endif
+#if WEATHER_UPLOAD_CWOP
+    run_cwop(observation);
 #endif
 #endif
 }
@@ -248,6 +319,18 @@ void append_weather_services_config(JsonDocument& doc, bool include_secrets) {
 #if WEATHER_UPLOAD_PWSWEATHER
     append_service(services["pwsweather"].to<JsonObject>(), pwsweather, include_secrets);
 #endif
+#if WEATHER_UPLOAD_CWOP
+    JsonObject cwop_json = services["cwop"].to<JsonObject>();
+    cwop_json["enabled"] = cwop.enabled;
+    cwop_json["station_id"] = cwop.station_id;
+    cwop_json["has_passcode"] = cwop.passcode.length() > 0 && cwop.passcode != "-1";
+    if (include_secrets) cwop_json["passcode"] = cwop.passcode;
+    if (isfinite(cwop.latitude)) cwop_json["latitude"] = cwop.latitude;
+    if (isfinite(cwop.longitude)) cwop_json["longitude"] = cwop.longitude;
+    cwop_json["interval"] = cwop.interval_seconds;
+    cwop_json["server"] = cwop.server;
+    cwop_json["port"] = cwop.port;
+#endif
 #if !WEATHER_UPLOAD_ANY
     (void)include_secrets;
 #endif
@@ -265,6 +348,31 @@ void save_weather_services_config(JsonVariantConst config) {
 #if WEATHER_UPLOAD_PWSWEATHER
     save_service(config["pwsweather"], pwsweather,
                  "pws_on", "pws_id", "pws_key", "pws_int", settings);
+#endif
+#if WEATHER_UPLOAD_CWOP
+    JsonVariantConst cwop_json = config["cwop"];
+    if (!cwop_json.isNull()) {
+        cwop.enabled = cwop_json["enabled"] | false;
+        cwop.station_id = cwop_json["station_id"] | "";
+        cwop.station_id.toUpperCase();
+        String new_passcode = cwop_json["passcode"] | "";
+        if (new_passcode.length() > 0) cwop.passcode = new_passcode;
+        if (cwop.passcode.length() == 0) cwop.passcode = "-1";
+        cwop.latitude = cwop_json["latitude"] | NAN;
+        cwop.longitude = cwop_json["longitude"] | NAN;
+        cwop.interval_seconds = static_cast<uint16_t>(
+            constrain(cwop_json["interval"] | 300, 300, 3600));
+        cwop.server = cwop_json["server"] | "cwop.aprs.net";
+        cwop.port = static_cast<uint16_t>(constrain(cwop_json["port"] | 14580, 1, 65535));
+        settings.putBool("cwop_on", cwop.enabled);
+        settings.putString("cwop_id", cwop.station_id);
+        settings.putString("cwop_pass", cwop.passcode);
+        settings.putFloat("cwop_lat", cwop.latitude);
+        settings.putFloat("cwop_lon", cwop.longitude);
+        settings.putInt("cwop_int", cwop.interval_seconds);
+        settings.putString("cwop_host", cwop.server);
+        settings.putInt("cwop_port", cwop.port);
+    }
 #endif
     settings.end();
 #else
@@ -287,6 +395,13 @@ bool queue_weather_service_test(WeatherServiceId service) {
         return true;
     }
 #endif
+#if WEATHER_UPLOAD_CWOP
+    if (service == WeatherServiceId::Cwop) {
+        activate_upload_metrics();
+        cwop_runtime.test_requested = true;
+        return true;
+    }
+#endif
     (void)service;
     return false;
 }
@@ -298,5 +413,8 @@ void append_weather_services_status(JsonDocument& doc) {
 #endif
 #if WEATHER_UPLOAD_PWSWEATHER
     append_runtime(services["pwsweather"].to<JsonObject>(), pwsweather_runtime);
+#endif
+#if WEATHER_UPLOAD_CWOP
+    append_runtime(services["cwop"].to<JsonObject>(), cwop_runtime);
 #endif
 }

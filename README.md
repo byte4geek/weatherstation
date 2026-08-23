@@ -307,7 +307,7 @@ All entities are automatically grouped under a single Home Assistant Device name
 
 ## 🌐 Weather Network Uploads
 
-The station can upload calibrated outdoor observations directly to Weather Underground and PWSWeather. Both services are disabled by default and use the common WU-compatible upload protocol.
+The station can upload calibrated outdoor observations directly to Weather Underground, PWSWeather, and CWOP. All services are disabled by default. Weather Underground and PWSWeather use the common WU-compatible upload protocol; CWOP uses APRS packets over APRS-IS.
 
 Configure each service under **Settings → Weather Services**:
 
@@ -325,6 +325,16 @@ disabled by default at runtime even after they are compiled.
 Uploads include temperature, humidity, calculated dew point, sea-level pressure, wind speed and direction, the rolling 10-minute gust, last-hour rainfall, and rainfall since local midnight. Destination protocols require imperial units; conversions are performed only in the uploader and do not change the dashboard unit setting.
 
 The 10-minute gust and since-midnight rain values are maintained in an upload-only tracker. It starts only when a weather upload service is enabled (or a test upload is requested) and does not alter the station's existing dashboard, MQTT payload, daily gust, rolling rain, or counter-reset behavior.
+
+### CWOP setup
+
+1. [Request a CWOP station ID from NOAA](https://madis.ncep.noaa.gov/cwop_signup.shtml) before enabling uploads.
+2. Enter the registered station ID and exact decimal latitude/longitude.
+3. Leave the passcode at `-1` for a non-ham CWOP ID. Amateur-radio APRS stations must enter their APRS-IS passcode.
+4. Keep the default `cwop.aprs.net` server and port `14580` unless CWOP support directs otherwise.
+5. Use an interval of at least 300 seconds. The default is five minutes.
+
+The CWOP packet includes last-hour (`r`), rolling-24-hour (`p`), and since-midnight (`P`) precipitation values. Packets advertise the station as non-messaging because this unattended device cannot answer APRS messages.
 
 > [!WARNING]
 > A full configuration backup contains Wi-Fi, MQTT, and weather-service credentials. Store backup files securely. The ordinary `/api/config` response does not expose weather-service keys.
