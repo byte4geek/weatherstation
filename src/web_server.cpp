@@ -2,6 +2,7 @@
 #include "globals.h"
 #include "web_server.h"
 #include "mqtt_manager.h"
+#include "weather_services.h"
 #include <ESP8266WebServer.h>
 #include <ArduinoJson.h>
 #include <Updater.h>
@@ -1151,6 +1152,62 @@ const char index_html[] PROGMEM = R"rawliteral(
                         </div>
                     </div>
 
+)rawliteral"
+#if WEATHER_UPLOAD_ANY
+R"rawliteral(                    <div class="panel-section">
+                        <h3><i class="mdi mdi-weather-cloudy-arrow-right" style="color: var(--primary); margin-right: 6px;"></i> Weather Services</h3>
+                        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 12px;">Uploads use calibrated observations and are independent of MQTT. Leave a station key blank to keep the saved key unchanged.</p>
+)rawliteral"
+#if WEATHER_UPLOAD_WUNDERGROUND
+R"rawliteral(
+                        <h4 style="margin: 12px 0 8px;">Weather Underground</h4>
+                        <div class="form-group" style="flex-direction: row; justify-content: space-between;">
+                            <label for="conf_wug_on">Enabled:</label>
+                            <input type="checkbox" id="conf_wug_on">
+                        </div>
+                        <div class="form-group">
+                            <label for="conf_wug_id">Station ID:</label>
+                            <input type="text" id="conf_wug_id" autocomplete="off">
+                        </div>
+                        <div class="form-group">
+                            <label for="conf_wug_key">Station Key:</label>
+                            <input type="password" id="conf_wug_key" autocomplete="new-password" placeholder="Leave blank to keep current key">
+                        </div>
+                        <div class="form-group">
+                            <label for="conf_wug_int">Upload Interval (seconds):</label>
+                            <input type="number" id="conf_wug_int" min="60" max="3600">
+                        </div>
+                        <button type="button" class="btn btn-sec" onclick="testWeatherService('wunderground')">Queue Test Upload</button>
+)rawliteral"
+#endif
+#if WEATHER_UPLOAD_PWSWEATHER
+R"rawliteral(
+                        <h4 style="margin: 22px 0 8px;">PWSWeather</h4>
+                        <div class="form-group" style="flex-direction: row; justify-content: space-between;">
+                            <label for="conf_pws_on">Enabled:</label>
+                            <input type="checkbox" id="conf_pws_on">
+                        </div>
+                        <div class="form-group">
+                            <label for="conf_pws_id">Station ID:</label>
+                            <input type="text" id="conf_pws_id" autocomplete="off">
+                        </div>
+                        <div class="form-group">
+                            <label for="conf_pws_key">Station API Key:</label>
+                            <input type="password" id="conf_pws_key" autocomplete="new-password" placeholder="Leave blank to keep current key">
+                        </div>
+                        <div class="form-group">
+                            <label for="conf_pws_int">Upload Interval (seconds):</label>
+                            <input type="number" id="conf_pws_int" min="60" max="3600">
+                        </div>
+                        <button type="button" class="btn btn-sec" onclick="testWeatherService('pwsweather')">Queue Test Upload</button>
+)rawliteral"
+#endif
+R"rawliteral(
+                    </div>
+)rawliteral"
+#endif
+R"rawliteral(
+
                     <div style="text-align: center; margin-top: 20px;">
                         <button type="submit" class="btn" style="width: 100%; max-width: 300px;"><i class="mdi mdi-content-save"></i> Save & Apply</button>
                     </div>
@@ -1815,6 +1872,23 @@ const char index_html[] PROGMEM = R"rawliteral(
                     document.getElementById('conf_m_user').value = c.m_user;
                     document.getElementById('conf_m_pass').value = c.m_pass;
 
+)rawliteral"
+#if WEATHER_UPLOAD_WUNDERGROUND
+R"rawliteral(                    const wug = (c.weather_services || {}).wunderground || {};
+                    document.getElementById('conf_wug_on').checked = !!wug.enabled;
+                    document.getElementById('conf_wug_id').value = wug.station_id || '';
+                    document.getElementById('conf_wug_int').value = wug.interval || 60;
+)rawliteral"
+#endif
+#if WEATHER_UPLOAD_PWSWEATHER
+R"rawliteral(                    const pws = (c.weather_services || {}).pwsweather || {};
+                    document.getElementById('conf_pws_on').checked = !!pws.enabled;
+                    document.getElementById('conf_pws_id').value = pws.station_id || '';
+                    document.getElementById('conf_pws_int').value = pws.interval || 60;
+)rawliteral"
+#endif
+R"rawliteral(
+
                     toggleDhcpFields(c.dhcp);
                     document.getElementById('fw_ver_title').innerText = c.fw_version || '1.0.0';
                 });
@@ -1874,7 +1948,31 @@ const char index_html[] PROGMEM = R"rawliteral(
                 m_pass: document.getElementById('conf_m_pass').value,
                 mqtt_int: parseInt(document.getElementById('conf_mqtt_int').value),
                 sens_int: parseInt(document.getElementById('conf_sens_int').value),
-                mqtt_dec: parseInt(document.getElementById('conf_mqtt_dec').value)
+                mqtt_dec: parseInt(document.getElementById('conf_mqtt_dec').value),
+                weather_services: {
+)rawliteral"
+#if WEATHER_UPLOAD_WUNDERGROUND
+R"rawliteral(
+                    wunderground: {
+                        enabled: document.getElementById('conf_wug_on').checked,
+                        station_id: document.getElementById('conf_wug_id').value,
+                        station_key: document.getElementById('conf_wug_key').value,
+                        interval: parseInt(document.getElementById('conf_wug_int').value)
+                    },
+)rawliteral"
+#endif
+#if WEATHER_UPLOAD_PWSWEATHER
+R"rawliteral(
+                    pwsweather: {
+                        enabled: document.getElementById('conf_pws_on').checked,
+                        station_id: document.getElementById('conf_pws_id').value,
+                        station_key: document.getElementById('conf_pws_key').value,
+                        interval: parseInt(document.getElementById('conf_pws_int').value)
+                    },
+)rawliteral"
+#endif
+R"rawliteral(
+                }
             };
 
             fetch('/api/save_config', {
@@ -1890,6 +1988,13 @@ const char index_html[] PROGMEM = R"rawliteral(
                     alert("Error saving configuration.");
                 }
             });
+        }
+
+        function testWeatherService(service) {
+            fetch('/api/weather_services/test?service=' + encodeURIComponent(service), { method: 'POST' })
+                .then(res => res.json().then(body => ({ ok: res.ok, body })))
+                .then(result => alert(result.body.message || (result.ok ? 'Test upload queued.' : 'Unable to queue test.')))
+                .catch(() => alert('Unable to queue test upload.'));
         }
 
         function calibrateNorth() {
@@ -2547,6 +2652,8 @@ void setup_web_server() {
         doc["m_pass"] = prefs.getString("mqtt_pass", "");
         prefs.end();
 
+        append_weather_services_config(doc, false);
+
         String res; serializeJson(doc, res);
         server.send(200, "application/json", res);
     });
@@ -2609,6 +2716,10 @@ void setup_web_server() {
         doc["m_user"] = local_prefs.getString("mqtt_user", "");
         doc["m_pass"] = local_prefs.getString("mqtt_pass", "");
         local_prefs.end();
+
+        // Full backups intentionally contain service credentials, like the
+        // existing Wi-Fi and MQTT credentials. Treat the file as sensitive.
+        append_weather_services_config(doc, true);
 
         String res; serializeJson(doc, res);
         server.send(200, "application/json", res);
@@ -2760,6 +2871,7 @@ void setup_web_server() {
                 local_prefs.putString("mqtt_pass", doc["m_pass"] | "");
                 
                 local_prefs.end();
+                save_weather_services_config(doc["weather_services"]);
                 app_log("Configuration saved successfully. Rebooting device...");
                 
                 server.send(200, "text/plain", "OK");
@@ -2769,6 +2881,34 @@ void setup_web_server() {
             }
         }
         server.send(400, "text/plain", "Bad Request");
+    });
+
+    server.on("/api/weather_services/status", HTTP_GET, []() {
+        JsonDocument doc;
+        append_weather_services_status(doc);
+        String response;
+        serializeJson(doc, response);
+        server.send(200, "application/json", response);
+    });
+
+    server.on("/api/weather_services/test", HTTP_POST, []() {
+        String service = server.arg("service");
+        bool queued = false;
+#if WEATHER_UPLOAD_WUNDERGROUND
+        if (service == "wunderground") {
+            queued = queue_weather_service_test(WeatherServiceId::Wunderground);
+        }
+#endif
+#if WEATHER_UPLOAD_PWSWEATHER
+        if (service == "pwsweather") {
+            queued = queue_weather_service_test(WeatherServiceId::PwsWeather);
+        }
+#endif
+        if (!queued) {
+            server.send(400, "application/json", "{\"message\":\"Unknown weather service.\"}");
+            return;
+        }
+        server.send(202, "application/json", "{\"message\":\"Test upload queued. Check status after a few seconds.\"}");
     });
 
     server.on("/api/calibrate_north", HTTP_POST, []() {

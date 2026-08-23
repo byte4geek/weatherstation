@@ -1,5 +1,6 @@
 // File: src/main.cpp
 #include "globals.h"
+#include "weather_services.h"
 #include <Ticker.h>
 
 #include <EspSaveCrash.h>
@@ -1036,6 +1037,7 @@ void setup() {
     // Initialize systems
     setup_web_server();
     setup_mqtt();
+    setup_weather_services();
 
     last_minute_update = millis();
     app_log("Initialization completed successfully!");
@@ -1193,6 +1195,7 @@ void loop() {
         if (elapsed_s <= 0.05f) elapsed_s = (float)wind_speed_interval_s;
         float hz = (float)pulses / elapsed_s;
         float instant_speed = hz * wind_calibration;
+        record_weather_service_wind_sample(instant_speed);
 
         // Push into speed ring buffer and compute rolling average
         int n = max(1, min(wind_speed_avg_samples, WIND_AVG_MAX_SAMPLES));
@@ -1219,6 +1222,9 @@ void loop() {
         last_sensor_read = millis();
         read_environmental_sensors();
     }
+
+    // External services consume the fully updated observation snapshot.
+    handle_weather_services();
 
     delay(10); // Small delay to yield to ESP32 background tasks
 }

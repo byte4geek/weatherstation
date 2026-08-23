@@ -6,7 +6,7 @@ This document provides complete documentation for the REST API endpoints exposed
 
 ## 📋 Endpoint Summary Table
 
-The weather station exposes **15 HTTP endpoints**:
+The weather station exposes **17 HTTP endpoints**:
 
 | Method | Endpoint | Description | Response Content-Type |
 |---|---|---|---|
@@ -14,6 +14,8 @@ The weather station exposes **15 HTTP endpoints**:
 | `GET` | `/api/config` | Read active settings & calibration factors | `application/json` |
 | `GET` | `/api/backup` | Download full NVS configuration backup (includes Wi-Fi keys) | `application/json` |
 | `POST` | `/api/save_config` | Update settings and save to NVS flash | `text/plain` |
+| `GET` | `/api/weather_services/status` | Read external upload results | `application/json` |
+| `POST` | `/api/weather_services/test` | Queue a service test upload | `application/json` |
 | `POST` | `/api/clear_counters` | Reset total rain counter and 24h history buffer | `text/plain` |
 | `POST` | `/api/calibrate_north` | Calibrate wind direction vane to North ($0^\circ$) | `application/json` |
 | `POST` | `/api/calibrate_lux_unfiltered` | Lux PETG Wizard: Step 1 (Unfiltered reference) | `application/json` |
@@ -208,7 +210,25 @@ Saves new configuration values to NVS flash memory and restarts the ESP8266 to a
 
 ---
 
-## 3. 🎯 Sensor Calibration & Maintenance Endpoints
+## 3. 🌐 Weather Service Endpoints
+
+### `GET /api/weather_services/status`
+
+Returns last-attempt time, last-success time, HTTP status, and a redacted result message for Weather Underground and PWSWeather. Credentials are never returned.
+
+### `POST /api/weather_services/test?service=<name>`
+
+Queues an upload using saved settings and the next complete observation snapshot. Valid service names are `wunderground` and `pwsweather`.
+
+#### Response: `202 Accepted`
+
+```json
+{"message":"Test upload queued. Check status after a few seconds."}
+```
+
+---
+
+## 4. 🎯 Sensor Calibration & Maintenance Endpoints
 
 ### `POST /api/clear_counters`
 
@@ -261,7 +281,7 @@ Calibrates the magnetic wind vane direction sensor (AS5600). The current physica
 
 ---
 
-## 4. 💻 Debug Console & System Control Endpoints
+## 5. 💻 Debug Console & System Control Endpoints
 
 ### `GET /api/logs`
 

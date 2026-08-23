@@ -23,6 +23,7 @@ A feature-rich, high-precision ESP8266-based Smart Weather Station with a modern
   - [Info](#4-info-tab)
 - [Settings Page Documentation](#-settings-page-documentation)
 - [Home Assistant & MQTT Integration](#-home-assistant--mqtt-integration)
+- [Weather Network Uploads](#-weather-network-uploads)
 - [Hardware Factory Reset](#-hardware-factory-reset)
 - [Backup & Restore](#-backup--restore)
 - [REST API Reference](RESTAPI_REFERENCE.md)
@@ -304,6 +305,30 @@ homeassistant/binary_sensor/<hostname>_is_raining/config
 
 All entities are automatically grouped under a single Home Assistant Device named **WeatherStation** (or your custom hostname).
 
+## 🌐 Weather Network Uploads
+
+The station can upload calibrated outdoor observations directly to Weather Underground and PWSWeather. Both services are disabled by default and use the common WU-compatible upload protocol.
+
+Configure each service under **Settings → Weather Services**:
+
+Only destinations selected with the compile-time flags in
+**Compilation & Flashing → Selecting weather-network upload services** are
+included in the firmware or shown on this page. Upload services remain
+disabled by default at runtime even after they are compiled.
+
+1. Register a station with the destination service.
+2. Enter the station ID and service-specific station/API key.
+3. Select an upload interval from 60 to 3600 seconds.
+4. Enable the service and save the configuration.
+5. After the restart, use **Queue Test Upload** and check the device console or `/api/weather_services/status`.
+
+Uploads include temperature, humidity, calculated dew point, sea-level pressure, wind speed and direction, the rolling 10-minute gust, last-hour rainfall, and rainfall since local midnight. Destination protocols require imperial units; conversions are performed only in the uploader and do not change the dashboard unit setting.
+
+The 10-minute gust and since-midnight rain values are maintained in an upload-only tracker. It starts only when a weather upload service is enabled (or a test upload is requested) and does not alter the station's existing dashboard, MQTT payload, daily gust, rolling rain, or counter-reset behavior.
+
+> [!WARNING]
+> A full configuration backup contains Wi-Fi, MQTT, and weather-service credentials. Store backup files securely. The ordinary `/api/config` response does not expose weather-service keys.
+
 ### Telemetry Topics
 - **Telemetry Payload**: Published to `tele/<hostname>/SENSOR`
 - **Last Will & Testament (LWT)**: Published to `tele/<hostname>/LWT` (`Online` / `Offline`)
@@ -363,7 +388,7 @@ If you lose access to the web portal or misconfigure the network settings, you c
 
 ## 📡 REST API Reference
 
-The weather station exposes **15 HTTP REST API endpoints** for querying live sensor telemetry, modifying configuration parameters, triggering sensor calibration wizards, executing interactive console commands, and integrating into third-party automation systems (Home Assistant, Python scripts, cURL, etc.).
+The weather station exposes **17 HTTP REST API endpoints** for querying live sensor telemetry, modifying configuration parameters, triggering sensor calibration wizards, executing interactive console commands, and integrating into third-party automation systems (Home Assistant, Python scripts, cURL, etc.).
 
 👉 **[View Complete REST API Documentation & Integration Examples (RESTAPI_REFERENCE.md)](RESTAPI_REFERENCE.md)**
 
