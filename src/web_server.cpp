@@ -1321,6 +1321,28 @@ R"rawliteral(
                         <button type="button" class="btn btn-sec" onclick="testWeatherService('awekas')">Queue Test Upload</button>
 )rawliteral"
 #endif
+#if WEATHER_UPLOAD_WOW_BE
+R"rawliteral(
+                        <h4 style="margin: 22px 0 8px;">WOW-BE (Belgium)</h4>
+                        <div class="form-group" style="flex-direction: row; justify-content: space-between;">
+                            <label for="conf_wow_on">Enabled:</label>
+                            <input type="checkbox" id="conf_wow_on">
+                        </div>
+                        <div class="form-group">
+                            <label for="conf_wow_id">Site ID:</label>
+                            <input type="text" id="conf_wow_id" autocomplete="off">
+                        </div>
+                        <div class="form-group">
+                            <label for="conf_wow_key">Site Authentication Key:</label>
+                            <input type="password" id="conf_wow_key" autocomplete="new-password" placeholder="Leave blank to keep current key">
+                        </div>
+                        <div class="form-group">
+                            <label for="conf_wow_int">Upload Interval (seconds):</label>
+                            <input type="number" id="conf_wow_int" min="60" max="3600">
+                        </div>
+                        <button type="button" class="btn btn-sec" onclick="testWeatherService('wow_be')">Queue Test Upload</button>
+)rawliteral"
+#endif
 R"rawliteral(
                     </div>
 )rawliteral"
@@ -2040,6 +2062,13 @@ R"rawliteral(                    const awk = (c.weather_services || {}).awekas |
                     document.getElementById('conf_awk_int').value = awk.interval || 300;
 )rawliteral"
 #endif
+#if WEATHER_UPLOAD_WOW_BE
+R"rawliteral(                    const wow = (c.weather_services || {}).wow_be || {};
+                    document.getElementById('conf_wow_on').checked = !!wow.enabled;
+                    document.getElementById('conf_wow_id').value = wow.station_id || '';
+                    document.getElementById('conf_wow_int').value = wow.interval || 300;
+)rawliteral"
+#endif
 R"rawliteral(
 
                     toggleDhcpFields(c.dhcp);
@@ -2167,6 +2196,16 @@ R"rawliteral(
                         latitude: parseFloat(document.getElementById('conf_awk_lat').value),
                         longitude: parseFloat(document.getElementById('conf_awk_lon').value),
                         interval: parseInt(document.getElementById('conf_awk_int').value)
+                    },
+)rawliteral"
+#endif
+#if WEATHER_UPLOAD_WOW_BE
+R"rawliteral(
+                    wow_be: {
+                        enabled: document.getElementById('conf_wow_on').checked,
+                        station_id: document.getElementById('conf_wow_id').value,
+                        station_key: document.getElementById('conf_wow_key').value,
+                        interval: parseInt(document.getElementById('conf_wow_int').value)
                     },
 )rawliteral"
 #endif
@@ -3121,6 +3160,11 @@ void setup_web_server() {
 #if WEATHER_UPLOAD_AWEKAS
         if (service == "awekas") {
             queued = queue_weather_service_test(WeatherServiceId::Awekas);
+        }
+#endif
+#if WEATHER_UPLOAD_WOW_BE
+        if (service == "wow_be") {
+            queued = queue_weather_service_test(WeatherServiceId::WowBe);
         }
 #endif
         if (!queued) {
