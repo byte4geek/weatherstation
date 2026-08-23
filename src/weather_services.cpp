@@ -14,6 +14,9 @@
 #if WEATHER_UPLOAD_WEATHERCLOUD
 #include "weathercloud_uploader.h"
 #endif
+#if WEATHER_UPLOAD_WINDY
+#include "windy_uploader.h"
+#endif
 #endif
 #if WEATHER_UPLOAD_WUNDERGROUND || WEATHER_UPLOAD_PWSWEATHER
 #include "wu_uploader.h"
@@ -62,6 +65,10 @@ ServiceRuntime pwsweather_runtime = {};
 ServiceConfig weathercloud = {};
 ServiceRuntime weathercloud_runtime = {};
 #endif
+#if WEATHER_UPLOAD_WINDY
+ServiceConfig windy = {};
+ServiceRuntime windy_runtime = {};
+#endif
 UploadMetricsTracker upload_metrics;
 #if WEATHER_UPLOAD_CWOP
 CwopConfig cwop = {};
@@ -92,6 +99,9 @@ bool any_upload_service_enabled() {
 #endif
 #if WEATHER_UPLOAD_WEATHERCLOUD
     enabled = enabled || weathercloud.enabled;
+#endif
+#if WEATHER_UPLOAD_WINDY
+    enabled = enabled || windy.enabled;
 #endif
     return enabled;
 }
@@ -273,6 +283,29 @@ void run_weathercloud(const WeatherObservation& observation) {
     if (result.success) weathercloud_runtime.last_success_utc = observation.timestamp_utc;
 }
 #endif
+
+#if WEATHER_UPLOAD_WINDY
+void run_windy(const WeatherObservation& observation) {
+    const unsigned long interval_ms = static_cast<unsigned long>(windy.interval_seconds) * 1000UL;
+    const unsigned long now_ms = millis();
+    bool due = windy_runtime.last_attempt_ms == 0 || now_ms - windy_runtime.last_attempt_ms >= interval_ms;
+    if (!windy_runtime.test_requested && (!windy.enabled || !due)) return;
+    windy_runtime.test_requested = false;
+    windy_runtime.last_attempt_ms = now_ms;
+    windy_runtime.last_attempt_utc = observation.timestamp_utc;
+    if (windy.station_id.length() == 0 || windy.station_key.length() == 0) {
+        windy_runtime.last_http_status = 0;
+        windy_runtime.last_message = "station ID or password missing";
+        app_log("[Weather Services] Windy skipped: station ID or password missing.");
+        return;
+    }
+    WindyUploadResult result = upload_windy_observation(
+        windy.station_id, windy.station_key, observation);
+    windy_runtime.last_http_status = result.http_status;
+    windy_runtime.last_message = result.message;
+    if (result.success) windy_runtime.last_success_utc = observation.timestamp_utc;
+}
+#endif
 #endif
 }
 
@@ -308,6 +341,12 @@ void setup_weather_services() {
     weathercloud.station_key = prefs.getString("wcl_key", "");
     weathercloud.interval_seconds = safe_interval(prefs.getInt("wcl_int", 600), 600);
 #endif
+#if WEATHER_UPLOAD_WINDY
+    windy.enabled = prefs.getBool("wnd_on", false);
+    windy.station_id = prefs.getString("wnd_id", "");
+    windy.station_key = prefs.getString("wnd_pass", "");
+    windy.interval_seconds = safe_interval(prefs.getInt("wnd_int", 300), 300);
+#endif
     prefs.end();
 
     if (any_upload_service_enabled()) activate_upload_metrics();
@@ -325,6 +364,10 @@ void setup_weather_services() {
 #if WEATHER_UPLOAD_WEATHERCLOUD
     weathercloud_runtime.last_attempt_ms = millis() -
         static_cast<unsigned long>(weathercloud.interval_seconds - 90) * 1000UL;
+#endif
+#if WEATHER_UPLOAD_WINDY
+    windy_runtime.last_attempt_ms = millis() -
+        static_cast<unsigned long>(windy.interval_seconds - 120) * 1000UL;
 #endif
 #endif
 }
@@ -348,6 +391,9 @@ void handle_weather_services() {
 #endif
 #if WEATHER_UPLOAD_WEATHERCLOUD
     run_weathercloud(observation);
+#endif
+#if WEATHER_UPLOAD_WINDY
+    run_windy(observation);
 #endif
 #endif
 }
@@ -382,6 +428,9 @@ void append_weather_services_config(JsonDocument& doc, bool include_secrets) {
 #endif
 #if WEATHER_UPLOAD_WEATHERCLOUD
     append_service(services["weathercloud"].to<JsonObject>(), weathercloud, include_secrets);
+#endif
+#if WEATHER_UPLOAD_WINDY
+    append_service(services["windy"].to<JsonObject>(), windy, include_secrets);
 #endif
 #if !WEATHER_UPLOAD_ANY
     (void)include_secrets;
@@ -440,6 +489,20 @@ void save_weather_services_config(JsonVariantConst config) {
         settings.putInt("wcl_int", weathercloud.interval_seconds);
     }
 #endif
+#if WEATHER_UPLOAD_WINDY
+    JsonVariantConst windy_json = config["windy"];
+    if (!windy_json.isNull()) {
+        windy.enabled = windy_json["enabled"] | false;
+        windy.station_id = windy_json["station_id"] | "";
+        windy.interval_seconds = safe_interval(windy_json["interval"] | 300, 300);
+        String new_password = windy_json["station_key"] | "";
+        if (new_password.length() > 0) windy.station_key = new_password;
+        settings.putBool("wnd_on", windy.enabled);
+        settings.putString("wnd_id", windy.station_id);
+        settings.putString("wnd_pass", windy.station_key);
+        settings.putInt("wnd_int", windy.interval_seconds);
+    }
+#endif
     settings.end();
 #else
     (void)config;
@@ -475,6 +538,13 @@ bool queue_weather_service_test(WeatherServiceId service) {
         return true;
     }
 #endif
+#if WEATHER_UPLOAD_WINDY
+    if (service == WeatherServiceId::Windy) {
+        activate_upload_metrics();
+        windy_runtime.test_requested = true;
+        return true;
+    }
+#endif
     (void)service;
     return false;
 }
@@ -492,5 +562,8 @@ void append_weather_services_status(JsonDocument& doc) {
 #endif
 #if WEATHER_UPLOAD_WEATHERCLOUD
     append_runtime(services["weathercloud"].to<JsonObject>(), weathercloud_runtime);
+#endif
+#if WEATHER_UPLOAD_WINDY
+    append_runtime(services["windy"].to<JsonObject>(), windy_runtime);
 #endif
 }

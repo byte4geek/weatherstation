@@ -50,3 +50,11 @@ c++ -std=c++11 -Wall -Wextra -Werror \
   -o /tmp/weatherstation-weathercloud-tests
 
 /tmp/weatherstation-weathercloud-tests
+
+c++ -std=c++11 -Wall -Wextra -Werror \
+  -Iinclude \
+  src/windy_formatter.cpp \
+  tests/test_windy_formatter.cpp \
+  -o /tmp/weatherstation-windy-tests
+
+/tmp/weatherstation-windy-tests
