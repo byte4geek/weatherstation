@@ -392,6 +392,59 @@ lib_deps =
     https://github.com/tzapu/WiFiManager.git
 ```
 
+### Selecting weather-network upload services
+
+Weather-network uploaders are excluded by default. Enabling a service in the
+web interface is not enough by itself: the corresponding uploader must first
+be included at compile time with a `build_flags` entry in `platformio.ini`.
+
+Available flags:
+
+| Destination | Build flag |
+|---|---|
+| Weather Underground | `WEATHER_UPLOAD_WUNDERGROUND` |
+| PWSWeather | `WEATHER_UPLOAD_PWSWEATHER` |
+| CWOP / APRS-IS | `WEATHER_UPLOAD_CWOP` |
+| Weathercloud | `WEATHER_UPLOAD_WEATHERCLOUD` |
+| Windy Stations | `WEATHER_UPLOAD_WINDY` |
+| AWEKAS | `WEATHER_UPLOAD_AWEKAS` |
+| WOW-BE | `WEATHER_UPLOAD_WOW_BE` |
+
+For example, a CWOP-only build uses:
+
+```ini
+[env:nodemcuv2]
+; existing settings remain here
+build_flags =
+    -DWEATHER_UPLOAD_CWOP=1
+```
+
+To compile multiple destinations, add one line for every service. Do not join
+names on one `-D` line. This example includes Weather Underground, CWOP, and
+Windy while leaving every other uploader out of the firmware:
+
+```ini
+[env:nodemcuv2]
+; existing settings remain here
+build_flags =
+    -DWEATHER_UPLOAD_WUNDERGROUND=1
+    -DWEATHER_UPLOAD_CWOP=1
+    -DWEATHER_UPLOAD_WINDY=1
+```
+
+After flashing, enable and configure only the compiled destinations under
+**Settings → Weather Services**. Destinations that were not compiled are not
+shown in the settings page or weather-service API responses.
+
+> [!WARNING]
+> The NodeMCU ESP8266 has 4 MB of physical flash, but the default OTA-compatible
+> application slot accepts only 1,044,464 bytes. The released v1.0.4 binary is
+> already approximately 710 KB. Every selected uploader adds code and web UI,
+> so do not assume the full 4 MB is available to the firmware. Check the
+> `Flash:` line from `pio run` after changing flags and confirm the image stays
+> below the reported maximum. Runtime heap is separate; check **Free Memory**
+> in the dashboard after an upload, especially when enabling HTTPS services.
+
 ### Building & Uploading
 ```bash
 # Build firmware
