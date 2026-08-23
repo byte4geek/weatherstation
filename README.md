@@ -307,7 +307,7 @@ All entities are automatically grouped under a single Home Assistant Device name
 
 ## 🌐 Weather Network Uploads
 
-The station can upload calibrated outdoor observations directly to Weather Underground, PWSWeather, and CWOP. All services are disabled by default. Weather Underground and PWSWeather use the common WU-compatible upload protocol; CWOP uses APRS packets over APRS-IS.
+The station can upload calibrated outdoor observations directly to Weather Underground, PWSWeather, CWOP, and Weathercloud. All services are disabled by default. Weather Underground and PWSWeather use the common WU-compatible upload protocol; CWOP uses APRS packets over APRS-IS; Weathercloud uses its HTTPS device API.
 
 Configure each service under **Settings → Weather Services**:
 
@@ -335,6 +335,14 @@ The 10-minute gust and since-midnight rain values are maintained in an upload-on
 5. Use an interval of at least 300 seconds. The default is five minutes.
 
 The CWOP packet includes last-hour (`r`), rolling-24-hour (`p`), and since-midnight (`P`) precipitation values. Packets advertise the station as non-messaging because this unattended device cannot answer APRS messages.
+
+### Weathercloud setup
+
+1. Create a device in Weathercloud and select compatible/custom weather software.
+2. Enter its device ID (`WID`) and device key.
+3. Keep the default 600-second interval. Free accounts are rate-limited to one update every 10 minutes.
+
+Weathercloud receives metric values in its required fixed-point representation. The uploader sends current wind as `wspd` and the tracked 10-minute gust as `wspdhi`; it does not claim a 10-minute average that the station does not calculate.
 
 > [!WARNING]
 > A full configuration backup contains Wi-Fi, MQTT, and weather-service credentials. Store backup files securely. The ordinary `/api/config` response does not expose weather-service keys.

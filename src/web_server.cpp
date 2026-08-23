@@ -1244,6 +1244,29 @@ R"rawliteral(
                         <button type="button" class="btn btn-sec" onclick="testWeatherService('cwop')">Queue Test Upload</button>
 )rawliteral"
 #endif
+#if WEATHER_UPLOAD_WEATHERCLOUD
+R"rawliteral(
+                        <h4 style="margin: 22px 0 8px;">Weathercloud</h4>
+                        <p style="color: var(--text-muted); font-size: 0.82rem; margin-bottom: 10px;">Free Weathercloud devices accept updates every 10 minutes.</p>
+                        <div class="form-group" style="flex-direction: row; justify-content: space-between;">
+                            <label for="conf_wcl_on">Enabled:</label>
+                            <input type="checkbox" id="conf_wcl_on">
+                        </div>
+                        <div class="form-group">
+                            <label for="conf_wcl_id">Device ID (WID):</label>
+                            <input type="text" id="conf_wcl_id" autocomplete="off">
+                        </div>
+                        <div class="form-group">
+                            <label for="conf_wcl_key">Device Key:</label>
+                            <input type="password" id="conf_wcl_key" autocomplete="new-password" placeholder="Leave blank to keep current key">
+                        </div>
+                        <div class="form-group">
+                            <label for="conf_wcl_int">Upload Interval (seconds):</label>
+                            <input type="number" id="conf_wcl_int" min="600" max="3600">
+                        </div>
+                        <button type="button" class="btn btn-sec" onclick="testWeatherService('weathercloud')">Queue Test Upload</button>
+)rawliteral"
+#endif
 R"rawliteral(
                     </div>
 )rawliteral"
@@ -1940,6 +1963,13 @@ R"rawliteral(                    const cwop = (c.weather_services || {}).cwop ||
                     document.getElementById('conf_cwop_port').value = cwop.port || 14580;
 )rawliteral"
 #endif
+#if WEATHER_UPLOAD_WEATHERCLOUD
+R"rawliteral(                    const wcl = (c.weather_services || {}).weathercloud || {};
+                    document.getElementById('conf_wcl_on').checked = !!wcl.enabled;
+                    document.getElementById('conf_wcl_id').value = wcl.station_id || '';
+                    document.getElementById('conf_wcl_int').value = wcl.interval || 600;
+)rawliteral"
+#endif
 R"rawliteral(
 
                     toggleDhcpFields(c.dhcp);
@@ -2035,6 +2065,16 @@ R"rawliteral(
                         interval: parseInt(document.getElementById('conf_cwop_int').value),
                         server: document.getElementById('conf_cwop_host').value,
                         port: parseInt(document.getElementById('conf_cwop_port').value)
+                    },
+)rawliteral"
+#endif
+#if WEATHER_UPLOAD_WEATHERCLOUD
+R"rawliteral(
+                    weathercloud: {
+                        enabled: document.getElementById('conf_wcl_on').checked,
+                        station_id: document.getElementById('conf_wcl_id').value,
+                        station_key: document.getElementById('conf_wcl_key').value,
+                        interval: parseInt(document.getElementById('conf_wcl_int').value)
                     },
 )rawliteral"
 #endif
@@ -2974,6 +3014,11 @@ void setup_web_server() {
 #if WEATHER_UPLOAD_CWOP
         if (service == "cwop") {
             queued = queue_weather_service_test(WeatherServiceId::Cwop);
+        }
+#endif
+#if WEATHER_UPLOAD_WEATHERCLOUD
+        if (service == "weathercloud") {
+            queued = queue_weather_service_test(WeatherServiceId::Weathercloud);
         }
 #endif
         if (!queued) {
