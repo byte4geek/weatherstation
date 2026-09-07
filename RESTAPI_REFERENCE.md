@@ -67,10 +67,12 @@ Returns all current sensor readings, rain totals, wind speed metrics (multi-unit
   "has_ens160": true,
   "has_as5600": true,
   "has_bh1750": true,
+  "has_dew_point": true,
   "lux": 1450.0,
   "wind_dir": 315.0,
   "temp": 24.5,
   "hum": 58.2,
+  "dew_point": 15.6,
   "press": 1013.25,
   "tvoc": 45,
   "eco2": 420,
@@ -94,8 +96,8 @@ Returns all current sensor readings, rain totals, wind speed metrics (multi-unit
 - `is_raining`: `true` if rainfall was registered within the last 5 minutes.
 - `wind_speed` / `wind_gust`: Current wind speed and peak gust today (km/h or mph depending on unit setting).
 - `wind_speed_ms`, `wind_speed_kt`, `wind_speed_mph`: Pre-calculated speed conversions in meters/sec, knots, and miles/hour.
-- `has_*`: Boolean flags indicating if each sensor was detected on the I2C / GPIO bus.
-- `temp`, `hum`, `press`, `lux`, `wind_dir`: Current readings from AHT20/BMP280/BH1750/AS5600 sensors (returns `null` if sensor is offline).
+- `has_*`: Boolean flags indicating if each sensor was detected on the I2C / GPIO bus (`has_dew_point` is true when both temp & humidity are valid).
+- `temp`, `hum`, `dew_point`, `press`, `lux`, `wind_dir`: Current readings from sensors and calculated Dew Point (returns `null` if sensor is offline).
 - `tvoc`, `eco2`, `aqi`: Air quality measurements from ENS160 (returns `null` if ENS160 is offline). `aqi` ranges 1 (Excellent) to 5 (Unhealthy).
 - `vcc`: Microcontroller operating voltage (V).
 - `heap`: Free RAM memory in bytes.
@@ -111,7 +113,7 @@ Returns current configuration settings, I2C pin assignments, calibration constan
 #### Sample Response (`200 OK`)
 ```json
 {
-  "fw_version": "1.0.4",
+  "fw_version": "1.0.5",
   "hostname": "WeatherStation",
   "use_imperial": false,
   "ui_compact": false,
@@ -152,7 +154,15 @@ Returns current configuration settings, I2C pin assignments, calibration constan
   "mqtt": "192.168.1.50",
   "m_port": 1883,
   "m_user": "homeassistant",
-  "m_pass": "secret"
+  "m_pass": "secret",
+  "weather_services": {
+    "wunderground": {
+      "enabled": true,
+      "station_id": "KCA...",
+      "interval": 60,
+      "sensors": { "temp": true, "hum": true, "press": true, "wind": true, "rain": true }
+    }
+  }
 }
 ```
 
@@ -202,7 +212,22 @@ Saves new configuration values to NVS flash memory and restarts the ESP8266 to a
   "m_pass": "secret",
   "mqtt_int": 15,
   "sens_int": 5,
-  "mqtt_dec": 1
+  "mqtt_dec": 1,
+  "weather_services": {
+    "wunderground": {
+      "enabled": true,
+      "station_id": "KCA...",
+      "station_key": "secret_key",
+      "interval": 60,
+      "sensors": {
+        "temp": true,
+        "hum": true,
+        "press": true,
+        "wind": true,
+        "rain": true
+      }
+    }
+  }
 }
 ```
 

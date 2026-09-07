@@ -3,6 +3,7 @@
 #include "web_server.h"
 #include "mqtt_manager.h"
 #include "weather_services.h"
+#include "weather_observation.h"
 #include <ESP8266WebServer.h>
 #include <ArduinoJson.h>
 #include <Updater.h>
@@ -655,6 +656,7 @@ const char index_html[] PROGMEM = R"rawliteral(
                     <div class="card primary">
                         <div class="card-title"><i class="mdi mdi-thermometer" style="color: #ef4444; font-size: 1.1rem; vertical-align: -2px; margin-right: 4px;"></i> Temperature</div>
                         <div class="card-value" id="val_temp">-- <span class="card-unit">°C</span></div>
+                        <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;" id="val_dew">Dew Point: --</div>
                     </div>
                     <div class="card primary">
                         <div class="card-title"><i class="mdi mdi-water-percent" style="color: #06b6d4; font-size: 1.1rem; vertical-align: -2px; margin-right: 4px;"></i> Humidity</div>
@@ -750,7 +752,7 @@ const char index_html[] PROGMEM = R"rawliteral(
                     <div class="c-title">
                         <i class="mdi mdi-weather-partly-cloudy" style="color: var(--primary); font-size: 1.4rem;"></i>
                         <span>Weather Station</span>
-                        <span class="c-badge-ver">v<span id="c_val_ver">1.0.4</span></span>
+                        <span class="c-badge-ver">v<span id="c_val_ver">1.0.5</span></span>
                     </div>
                     <div class="c-header-badges">
                         <span id="c_rain_badge" class="c-status-badge badge-clear">
@@ -768,6 +770,7 @@ const char index_html[] PROGMEM = R"rawliteral(
                         <div class="c-tile-content">
                             <div class="c-tile-label">Temp</div>
                             <div class="c-tile-val" id="c_val_temp">-- <span class="c-unit">°C</span></div>
+                            <div class="c-tile-sub" id="c_val_dew">Dew: --</div>
                         </div>
                     </div>
 
@@ -1177,6 +1180,16 @@ R"rawliteral(
                             <label for="conf_wug_int">Upload Interval (seconds):</label>
                             <input type="number" id="conf_wug_int" min="60" max="3600">
                         </div>
+                        <div class="form-group" style="flex-direction: column; align-items: flex-start; gap: 4px; margin-top: 8px;">
+                            <label style="font-weight: 600; font-size: 0.85rem;">Uploaded Sensors:</label>
+                            <div style="display: flex; flex-wrap: wrap; gap: 12px; font-size: 0.85rem;">
+                                <label><input type="checkbox" id="conf_wug_s_temp" checked> Temp &amp; Dew</label>
+                                <label><input type="checkbox" id="conf_wug_s_hum" checked> Humidity</label>
+                                <label><input type="checkbox" id="conf_wug_s_press" checked> Pressure</label>
+                                <label><input type="checkbox" id="conf_wug_s_wind" checked> Wind</label>
+                                <label><input type="checkbox" id="conf_wug_s_rain" checked> Rain</label>
+                            </div>
+                        </div>
                         <button type="button" class="btn btn-sec" onclick="testWeatherService('wunderground')">Queue Test Upload</button>
 )rawliteral"
 #endif
@@ -1198,6 +1211,16 @@ R"rawliteral(
                         <div class="form-group">
                             <label for="conf_pws_int">Upload Interval (seconds):</label>
                             <input type="number" id="conf_pws_int" min="60" max="3600">
+                        </div>
+                        <div class="form-group" style="flex-direction: column; align-items: flex-start; gap: 4px; margin-top: 8px;">
+                            <label style="font-weight: 600; font-size: 0.85rem;">Uploaded Sensors:</label>
+                            <div style="display: flex; flex-wrap: wrap; gap: 12px; font-size: 0.85rem;">
+                                <label><input type="checkbox" id="conf_pws_s_temp" checked> Temp &amp; Dew</label>
+                                <label><input type="checkbox" id="conf_pws_s_hum" checked> Humidity</label>
+                                <label><input type="checkbox" id="conf_pws_s_press" checked> Pressure</label>
+                                <label><input type="checkbox" id="conf_pws_s_wind" checked> Wind</label>
+                                <label><input type="checkbox" id="conf_pws_s_rain" checked> Rain</label>
+                            </div>
                         </div>
                         <button type="button" class="btn btn-sec" onclick="testWeatherService('pwsweather')">Queue Test Upload</button>
 )rawliteral"
@@ -1229,6 +1252,16 @@ R"rawliteral(
                         <div class="form-group">
                             <label for="conf_cwop_int">Upload Interval (seconds):</label>
                             <input type="number" id="conf_cwop_int" min="300" max="3600">
+                        </div>
+                        <div class="form-group" style="flex-direction: column; align-items: flex-start; gap: 4px; margin-top: 8px;">
+                            <label style="font-weight: 600; font-size: 0.85rem;">Uploaded Sensors:</label>
+                            <div style="display: flex; flex-wrap: wrap; gap: 12px; font-size: 0.85rem;">
+                                <label><input type="checkbox" id="conf_cwop_s_temp" checked> Temp &amp; Dew</label>
+                                <label><input type="checkbox" id="conf_cwop_s_hum" checked> Humidity</label>
+                                <label><input type="checkbox" id="conf_cwop_s_press" checked> Pressure</label>
+                                <label><input type="checkbox" id="conf_cwop_s_wind" checked> Wind</label>
+                                <label><input type="checkbox" id="conf_cwop_s_rain" checked> Rain</label>
+                            </div>
                         </div>
                         <details style="margin-bottom: 12px;">
                             <summary style="cursor: pointer; color: var(--text-muted);">Advanced server settings</summary>
@@ -1264,6 +1297,16 @@ R"rawliteral(
                             <label for="conf_wcl_int">Upload Interval (seconds):</label>
                             <input type="number" id="conf_wcl_int" min="600" max="3600">
                         </div>
+                        <div class="form-group" style="flex-direction: column; align-items: flex-start; gap: 4px; margin-top: 8px;">
+                            <label style="font-weight: 600; font-size: 0.85rem;">Uploaded Sensors:</label>
+                            <div style="display: flex; flex-wrap: wrap; gap: 12px; font-size: 0.85rem;">
+                                <label><input type="checkbox" id="conf_wcl_s_temp" checked> Temp &amp; Dew</label>
+                                <label><input type="checkbox" id="conf_wcl_s_hum" checked> Humidity</label>
+                                <label><input type="checkbox" id="conf_wcl_s_press" checked> Pressure</label>
+                                <label><input type="checkbox" id="conf_wcl_s_wind" checked> Wind</label>
+                                <label><input type="checkbox" id="conf_wcl_s_rain" checked> Rain</label>
+                            </div>
+                        </div>
                         <button type="button" class="btn btn-sec" onclick="testWeatherService('weathercloud')">Queue Test Upload</button>
 )rawliteral"
 #endif
@@ -1286,6 +1329,16 @@ R"rawliteral(
                         <div class="form-group">
                             <label for="conf_wnd_int">Upload Interval (seconds):</label>
                             <input type="number" id="conf_wnd_int" min="300" max="3600">
+                        </div>
+                        <div class="form-group" style="flex-direction: column; align-items: flex-start; gap: 4px; margin-top: 8px;">
+                            <label style="font-weight: 600; font-size: 0.85rem;">Uploaded Sensors:</label>
+                            <div style="display: flex; flex-wrap: wrap; gap: 12px; font-size: 0.85rem;">
+                                <label><input type="checkbox" id="conf_wnd_s_temp" checked> Temp &amp; Dew</label>
+                                <label><input type="checkbox" id="conf_wnd_s_hum" checked> Humidity</label>
+                                <label><input type="checkbox" id="conf_wnd_s_press" checked> Pressure</label>
+                                <label><input type="checkbox" id="conf_wnd_s_wind" checked> Wind</label>
+                                <label><input type="checkbox" id="conf_wnd_s_rain" checked> Rain</label>
+                            </div>
                         </div>
                         <button type="button" class="btn btn-sec" onclick="testWeatherService('windy')">Queue Test Upload</button>
 )rawliteral"
@@ -1318,6 +1371,16 @@ R"rawliteral(
                             <label for="conf_awk_int">Upload Interval (seconds):</label>
                             <input type="number" id="conf_awk_int" min="300" max="3600">
                         </div>
+                        <div class="form-group" style="flex-direction: column; align-items: flex-start; gap: 4px; margin-top: 8px;">
+                            <label style="font-weight: 600; font-size: 0.85rem;">Uploaded Sensors:</label>
+                            <div style="display: flex; flex-wrap: wrap; gap: 12px; font-size: 0.85rem;">
+                                <label><input type="checkbox" id="conf_awk_s_temp" checked> Temp &amp; Dew</label>
+                                <label><input type="checkbox" id="conf_awk_s_hum" checked> Humidity</label>
+                                <label><input type="checkbox" id="conf_awk_s_press" checked> Pressure</label>
+                                <label><input type="checkbox" id="conf_awk_s_wind" checked> Wind</label>
+                                <label><input type="checkbox" id="conf_awk_s_rain" checked> Rain</label>
+                            </div>
+                        </div>
                         <button type="button" class="btn btn-sec" onclick="testWeatherService('awekas')">Queue Test Upload</button>
 )rawliteral"
 #endif
@@ -1339,6 +1402,16 @@ R"rawliteral(
                         <div class="form-group">
                             <label for="conf_wow_int">Upload Interval (seconds):</label>
                             <input type="number" id="conf_wow_int" min="60" max="3600">
+                        </div>
+                        <div class="form-group" style="flex-direction: column; align-items: flex-start; gap: 4px; margin-top: 8px;">
+                            <label style="font-weight: 600; font-size: 0.85rem;">Uploaded Sensors:</label>
+                            <div style="display: flex; flex-wrap: wrap; gap: 12px; font-size: 0.85rem;">
+                                <label><input type="checkbox" id="conf_wow_s_temp" checked> Temp &amp; Dew</label>
+                                <label><input type="checkbox" id="conf_wow_s_hum" checked> Humidity</label>
+                                <label><input type="checkbox" id="conf_wow_s_press" checked> Pressure</label>
+                                <label><input type="checkbox" id="conf_wow_s_wind" checked> Wind</label>
+                                <label><input type="checkbox" id="conf_wow_s_rain" checked> Rain</label>
+                            </div>
                         </div>
                         <button type="button" class="btn btn-sec" onclick="testWeatherService('wow_be')">Queue Test Upload</button>
 )rawliteral"
@@ -1650,12 +1723,22 @@ R"rawliteral(
                     }
                     
                     const valTemp = document.getElementById('val_temp');
+                    const valDew = document.getElementById('val_dew');
                     if (data.has_aht20 || data.has_bmp280) {
                         const tVal = isImp ? (data.temp * 1.8 + 32.0) : data.temp;
                         const tUnit = isImp ? '°F' : '°C';
                         valTemp.innerHTML = `${tVal.toFixed(1)} <span class="card-unit">${tUnit}</span>`;
+                        if (valDew) {
+                            if (data.has_dew_point && data.dew_point !== null && data.dew_point !== undefined) {
+                                const dVal = isImp ? (data.dew_point * 1.8 + 32.0) : data.dew_point;
+                                valDew.innerHTML = `Dew Point: ${dVal.toFixed(1)} ${tUnit}`;
+                            } else {
+                                valDew.innerHTML = `Dew Point: N/A`;
+                            }
+                        }
                     } else {
                         valTemp.innerHTML = '<span style="color: var(--danger); font-size: 1rem; font-weight: bold;">Sensor not found</span>';
+                        if (valDew) valDew.innerHTML = '';
                     }
 
                     const valHum = document.getElementById('val_hum');
@@ -1737,13 +1820,23 @@ R"rawliteral(
                     // Populate Compact Board elements
                     if (document.getElementById('compact_dashboard_board')) {
                         const cTemp = document.getElementById('c_val_temp');
+                        const cDew = document.getElementById('c_val_dew');
                         if (cTemp) {
                             if (data.has_aht20 || data.has_bmp280) {
                                 const tVal = isImp ? (data.temp * 1.8 + 32.0) : data.temp;
                                 const tUnit = isImp ? '°F' : '°C';
                                 cTemp.innerHTML = `${tVal.toFixed(1)} <span class="c-unit">${tUnit}</span>`;
+                                if (cDew) {
+                                    if (data.has_dew_point && data.dew_point !== null && data.dew_point !== undefined) {
+                                        const dVal = isImp ? (data.dew_point * 1.8 + 32.0) : data.dew_point;
+                                        cDew.innerHTML = `Dew: ${dVal.toFixed(1)} ${tUnit}`;
+                                    } else {
+                                        cDew.innerHTML = `Dew: N/A`;
+                                    }
+                                }
                             } else {
                                 cTemp.innerHTML = '<span style="color: var(--danger); font-size: 0.85rem;">N/A</span>';
+                                if (cDew) cDew.innerHTML = '';
                             }
                         }
 
@@ -2016,20 +2109,33 @@ R"rawliteral(
 )rawliteral"
 #if WEATHER_UPLOAD_WUNDERGROUND
 R"rawliteral(                    const wug = (c.weather_services || {}).wunderground || {};
+                    const wug_s = wug.sensors || {};
                     document.getElementById('conf_wug_on').checked = !!wug.enabled;
                     document.getElementById('conf_wug_id').value = wug.station_id || '';
                     document.getElementById('conf_wug_int').value = wug.interval || 60;
+                    document.getElementById('conf_wug_s_temp').checked = wug_s.temp !== false;
+                    document.getElementById('conf_wug_s_hum').checked = wug_s.hum !== false;
+                    document.getElementById('conf_wug_s_press').checked = wug_s.press !== false;
+                    document.getElementById('conf_wug_s_wind').checked = wug_s.wind !== false;
+                    document.getElementById('conf_wug_s_rain').checked = wug_s.rain !== false;
 )rawliteral"
 #endif
 #if WEATHER_UPLOAD_PWSWEATHER
 R"rawliteral(                    const pws = (c.weather_services || {}).pwsweather || {};
+                    const pws_s = pws.sensors || {};
                     document.getElementById('conf_pws_on').checked = !!pws.enabled;
                     document.getElementById('conf_pws_id').value = pws.station_id || '';
                     document.getElementById('conf_pws_int').value = pws.interval || 60;
+                    document.getElementById('conf_pws_s_temp').checked = pws_s.temp !== false;
+                    document.getElementById('conf_pws_s_hum').checked = pws_s.hum !== false;
+                    document.getElementById('conf_pws_s_press').checked = pws_s.press !== false;
+                    document.getElementById('conf_pws_s_wind').checked = pws_s.wind !== false;
+                    document.getElementById('conf_pws_s_rain').checked = pws_s.rain !== false;
 )rawliteral"
 #endif
 #if WEATHER_UPLOAD_CWOP
 R"rawliteral(                    const cwop = (c.weather_services || {}).cwop || {};
+                    const cwop_s = cwop.sensors || {};
                     document.getElementById('conf_cwop_on').checked = !!cwop.enabled;
                     document.getElementById('conf_cwop_id').value = cwop.station_id || '';
                     document.getElementById('conf_cwop_lat').value = (cwop.latitude !== undefined) ? cwop.latitude : '';
@@ -2037,36 +2143,65 @@ R"rawliteral(                    const cwop = (c.weather_services || {}).cwop ||
                     document.getElementById('conf_cwop_int').value = cwop.interval || 300;
                     document.getElementById('conf_cwop_host').value = cwop.server || 'cwop.aprs.net';
                     document.getElementById('conf_cwop_port').value = cwop.port || 14580;
+                    document.getElementById('conf_cwop_s_temp').checked = cwop_s.temp !== false;
+                    document.getElementById('conf_cwop_s_hum').checked = cwop_s.hum !== false;
+                    document.getElementById('conf_cwop_s_press').checked = cwop_s.press !== false;
+                    document.getElementById('conf_cwop_s_wind').checked = cwop_s.wind !== false;
+                    document.getElementById('conf_cwop_s_rain').checked = cwop_s.rain !== false;
 )rawliteral"
 #endif
 #if WEATHER_UPLOAD_WEATHERCLOUD
 R"rawliteral(                    const wcl = (c.weather_services || {}).weathercloud || {};
+                    const wcl_s = wcl.sensors || {};
                     document.getElementById('conf_wcl_on').checked = !!wcl.enabled;
                     document.getElementById('conf_wcl_id').value = wcl.station_id || '';
                     document.getElementById('conf_wcl_int').value = wcl.interval || 600;
+                    document.getElementById('conf_wcl_s_temp').checked = wcl_s.temp !== false;
+                    document.getElementById('conf_wcl_s_hum').checked = wcl_s.hum !== false;
+                    document.getElementById('conf_wcl_s_press').checked = wcl_s.press !== false;
+                    document.getElementById('conf_wcl_s_wind').checked = wcl_s.wind !== false;
+                    document.getElementById('conf_wcl_s_rain').checked = wcl_s.rain !== false;
 )rawliteral"
 #endif
 #if WEATHER_UPLOAD_WINDY
 R"rawliteral(                    const wnd = (c.weather_services || {}).windy || {};
+                    const wnd_s = wnd.sensors || {};
                     document.getElementById('conf_wnd_on').checked = !!wnd.enabled;
                     document.getElementById('conf_wnd_id').value = wnd.station_id || '';
                     document.getElementById('conf_wnd_int').value = wnd.interval || 300;
+                    document.getElementById('conf_wnd_s_temp').checked = wnd_s.temp !== false;
+                    document.getElementById('conf_wnd_s_hum').checked = wnd_s.hum !== false;
+                    document.getElementById('conf_wnd_s_press').checked = wnd_s.press !== false;
+                    document.getElementById('conf_wnd_s_wind').checked = wnd_s.wind !== false;
+                    document.getElementById('conf_wnd_s_rain').checked = wnd_s.rain !== false;
 )rawliteral"
 #endif
 #if WEATHER_UPLOAD_AWEKAS
 R"rawliteral(                    const awk = (c.weather_services || {}).awekas || {};
+                    const awk_s = awk.sensors || {};
                     document.getElementById('conf_awk_on').checked = !!awk.enabled;
                     document.getElementById('conf_awk_user').value = awk.username || '';
                     document.getElementById('conf_awk_lat').value = (awk.latitude !== undefined) ? awk.latitude : '';
                     document.getElementById('conf_awk_lon').value = (awk.longitude !== undefined) ? awk.longitude : '';
                     document.getElementById('conf_awk_int').value = awk.interval || 300;
+                    document.getElementById('conf_awk_s_temp').checked = awk_s.temp !== false;
+                    document.getElementById('conf_awk_s_hum').checked = awk_s.hum !== false;
+                    document.getElementById('conf_awk_s_press').checked = awk_s.press !== false;
+                    document.getElementById('conf_awk_s_wind').checked = awk_s.wind !== false;
+                    document.getElementById('conf_awk_s_rain').checked = awk_s.rain !== false;
 )rawliteral"
 #endif
 #if WEATHER_UPLOAD_WOW_BE
 R"rawliteral(                    const wow = (c.weather_services || {}).wow_be || {};
+                    const wow_s = wow.sensors || {};
                     document.getElementById('conf_wow_on').checked = !!wow.enabled;
                     document.getElementById('conf_wow_id').value = wow.station_id || '';
                     document.getElementById('conf_wow_int').value = wow.interval || 300;
+                    document.getElementById('conf_wow_s_temp').checked = wow_s.temp !== false;
+                    document.getElementById('conf_wow_s_hum').checked = wow_s.hum !== false;
+                    document.getElementById('conf_wow_s_press').checked = wow_s.press !== false;
+                    document.getElementById('conf_wow_s_wind').checked = wow_s.wind !== false;
+                    document.getElementById('conf_wow_s_rain').checked = wow_s.rain !== false;
 )rawliteral"
 #endif
 R"rawliteral(
@@ -2139,7 +2274,14 @@ R"rawliteral(
                         enabled: document.getElementById('conf_wug_on').checked,
                         station_id: document.getElementById('conf_wug_id').value,
                         station_key: document.getElementById('conf_wug_key').value,
-                        interval: parseInt(document.getElementById('conf_wug_int').value)
+                        interval: parseInt(document.getElementById('conf_wug_int').value),
+                        sensors: {
+                            temp: document.getElementById('conf_wug_s_temp').checked,
+                            hum: document.getElementById('conf_wug_s_hum').checked,
+                            press: document.getElementById('conf_wug_s_press').checked,
+                            wind: document.getElementById('conf_wug_s_wind').checked,
+                            rain: document.getElementById('conf_wug_s_rain').checked
+                        }
                     },
 )rawliteral"
 #endif
@@ -2149,7 +2291,14 @@ R"rawliteral(
                         enabled: document.getElementById('conf_pws_on').checked,
                         station_id: document.getElementById('conf_pws_id').value,
                         station_key: document.getElementById('conf_pws_key').value,
-                        interval: parseInt(document.getElementById('conf_pws_int').value)
+                        interval: parseInt(document.getElementById('conf_pws_int').value),
+                        sensors: {
+                            temp: document.getElementById('conf_pws_s_temp').checked,
+                            hum: document.getElementById('conf_pws_s_hum').checked,
+                            press: document.getElementById('conf_pws_s_press').checked,
+                            wind: document.getElementById('conf_pws_s_wind').checked,
+                            rain: document.getElementById('conf_pws_s_rain').checked
+                        }
                     },
 )rawliteral"
 #endif
@@ -2163,7 +2312,14 @@ R"rawliteral(
                         longitude: parseFloat(document.getElementById('conf_cwop_lon').value),
                         interval: parseInt(document.getElementById('conf_cwop_int').value),
                         server: document.getElementById('conf_cwop_host').value,
-                        port: parseInt(document.getElementById('conf_cwop_port').value)
+                        port: parseInt(document.getElementById('conf_cwop_port').value),
+                        sensors: {
+                            temp: document.getElementById('conf_cwop_s_temp').checked,
+                            hum: document.getElementById('conf_cwop_s_hum').checked,
+                            press: document.getElementById('conf_cwop_s_press').checked,
+                            wind: document.getElementById('conf_cwop_s_wind').checked,
+                            rain: document.getElementById('conf_cwop_s_rain').checked
+                        }
                     },
 )rawliteral"
 #endif
@@ -2173,7 +2329,14 @@ R"rawliteral(
                         enabled: document.getElementById('conf_wcl_on').checked,
                         station_id: document.getElementById('conf_wcl_id').value,
                         station_key: document.getElementById('conf_wcl_key').value,
-                        interval: parseInt(document.getElementById('conf_wcl_int').value)
+                        interval: parseInt(document.getElementById('conf_wcl_int').value),
+                        sensors: {
+                            temp: document.getElementById('conf_wcl_s_temp').checked,
+                            hum: document.getElementById('conf_wcl_s_hum').checked,
+                            press: document.getElementById('conf_wcl_s_press').checked,
+                            wind: document.getElementById('conf_wcl_s_wind').checked,
+                            rain: document.getElementById('conf_wcl_s_rain').checked
+                        }
                     },
 )rawliteral"
 #endif
@@ -2183,7 +2346,14 @@ R"rawliteral(
                         enabled: document.getElementById('conf_wnd_on').checked,
                         station_id: document.getElementById('conf_wnd_id').value,
                         station_key: document.getElementById('conf_wnd_pass').value,
-                        interval: parseInt(document.getElementById('conf_wnd_int').value)
+                        interval: parseInt(document.getElementById('conf_wnd_int').value),
+                        sensors: {
+                            temp: document.getElementById('conf_wnd_s_temp').checked,
+                            hum: document.getElementById('conf_wnd_s_hum').checked,
+                            press: document.getElementById('conf_wnd_s_press').checked,
+                            wind: document.getElementById('conf_wnd_s_wind').checked,
+                            rain: document.getElementById('conf_wnd_s_rain').checked
+                        }
                     },
 )rawliteral"
 #endif
@@ -2195,7 +2365,14 @@ R"rawliteral(
                         password: document.getElementById('conf_awk_pass').value,
                         latitude: parseFloat(document.getElementById('conf_awk_lat').value),
                         longitude: parseFloat(document.getElementById('conf_awk_lon').value),
-                        interval: parseInt(document.getElementById('conf_awk_int').value)
+                        interval: parseInt(document.getElementById('conf_awk_int').value),
+                        sensors: {
+                            temp: document.getElementById('conf_awk_s_temp').checked,
+                            hum: document.getElementById('conf_awk_s_hum').checked,
+                            press: document.getElementById('conf_awk_s_press').checked,
+                            wind: document.getElementById('conf_awk_s_wind').checked,
+                            rain: document.getElementById('conf_awk_s_rain').checked
+                        }
                     },
 )rawliteral"
 #endif
@@ -2205,7 +2382,14 @@ R"rawliteral(
                         enabled: document.getElementById('conf_wow_on').checked,
                         station_id: document.getElementById('conf_wow_id').value,
                         station_key: document.getElementById('conf_wow_key').value,
-                        interval: parseInt(document.getElementById('conf_wow_int').value)
+                        interval: parseInt(document.getElementById('conf_wow_int').value),
+                        sensors: {
+                            temp: document.getElementById('conf_wow_s_temp').checked,
+                            hum: document.getElementById('conf_wow_s_hum').checked,
+                            press: document.getElementById('conf_wow_s_press').checked,
+                            wind: document.getElementById('conf_wow_s_wind').checked,
+                            rain: document.getElementById('conf_wow_s_rain').checked
+                        }
                     },
 )rawliteral"
 #endif
@@ -2770,6 +2954,14 @@ void setup_web_server() {
         doc["has_ens160"] = has_ens160;
         doc["has_as5600"] = has_as5600;
         doc["has_bh1750"] = has_bh1750;
+
+        float dew_c = (has_aht20 || has_bmp280) ? calculate_dew_point_c(temperature_c, humidity_pct) : NAN;
+        doc["has_dew_point"] = isfinite(dew_c);
+        if (isfinite(dew_c)) {
+            doc["dew_point"] = dew_c;
+        } else {
+            doc["dew_point"] = nullptr;
+        }
 
         if (has_bh1750) {
             doc["lux"] = lux;

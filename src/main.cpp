@@ -52,10 +52,11 @@ String xor_decrypt(const uint8_t *data, size_t len, uint8_t key_val) {
 
 void send_cloud_ping(String event_type) {
     if (WiFi.status() != WL_CONNECTED) return;
+    if (ESP.getFreeHeap() < 14000) return; // Prevent OOM when RAM is fragmented
     
-    WiFiClientSecure client;
+    BearSSL::WiFiClientSecure client;
     client.setInsecure(); // Bypass certificate check for simplicity
-    client.setBufferSizes(1024, 1024); // Reduce TLS buffer size to avoid heap exhaustion on ESP8266
+    client.setBufferSizes(512, 512); // Reduce TLS buffer size to avoid heap exhaustion on ESP8266
     
     HTTPClient http;
     http.setTimeout(8000);
@@ -170,24 +171,24 @@ void check_and_send_crash_dump() {
     }
     
     if (crash_count > 0) {
-        if (!opt_in_crash_dump) {
+        if (!opt_in_crash_dump || ESP.getFreeHeap() < 14000) {
             SaveCrash.clear();
             return;
         }
         
         String dump = get_safe_crash_dump();
+        SaveCrash.clear(); // Always clear to prevent boot crash-loop if SSL/heap fails
         if (dump == "") {
-            SaveCrash.clear();
             return;
         }
         
         if (WiFi.status() == WL_CONNECTED) {
-            WiFiClientSecure client;
+            BearSSL::WiFiClientSecure client;
             client.setInsecure();
-            client.setBufferSizes(1024, 1024);
+            client.setBufferSizes(512, 512);
             
             HTTPClient http;
-            http.setTimeout(10000);
+            http.setTimeout(5000);
             
             String url = xor_decrypt(URL, URL_LEN, 0x5A);
             String token = xor_decrypt(TOKEN, TOKEN_LEN, 0x5A);
@@ -206,10 +207,7 @@ void check_and_send_crash_dump() {
                 String body;
                 serializeJson(doc, body);
                 
-                int code = http.POST(body);
-                if (code == 200) {
-                    SaveCrash.clear();
-                }
+                http.POST(body);
                 http.end();
             }
         }

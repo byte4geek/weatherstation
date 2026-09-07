@@ -24,6 +24,7 @@ WeathercloudUploadResult upload_weathercloud_observation(
 
     BearSSL::WiFiClientSecure client;
     client.setInsecure();
+    client.setBufferSizes(1024, 512);
     client.setTimeout(5000);
     HTTPClient http;
     http.setTimeout(5000);

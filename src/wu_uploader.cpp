@@ -84,33 +84,49 @@ WuUploadResult upload_wu_observation(const char* service_name,
                                      const String& station_key,
                                      const WeatherObservation& observation) {
     WuUploadResult result = {false, 0, "connection failed"};
-    BearSSL::WiFiClientSecure client;
-    // ESP8266 has no maintained system CA store. Encryption is still used, but
-    // certificate verification remains disabled until a configurable trust
-    // anchor or CertStore is added.
-    client.setInsecure();
-    client.setTimeout(5000);
-
     String url(base_url);
     url += build_wu_query(station_id, station_key, observation);
 
     HTTPClient http;
     http.setTimeout(5000);
     http.setUserAgent(String("byte4geek-weatherstation/") + FIRMWARE_VERSION);
-    if (!http.begin(client, url)) {
-        result.message = "unable to initialize HTTPS client";
-        return result;
+
+    if (url.startsWith("https://")) {
+        BearSSL::WiFiClientSecure client;
+        client.setInsecure();
+        client.setBufferSizes(1024, 512);
+        client.setTimeout(5000);
+        if (!http.begin(client, url)) {
+            result.message = "unable to initialize HTTPS client";
+            return result;
+        }
+        result.http_status = http.GET();
+        String response = http.getString();
+        response.trim();
+        http.end();
+
+        String lower = response;
+        lower.toLowerCase();
+        result.success = result.http_status >= 200 && result.http_status < 300 &&
+                         (lower.length() == 0 || lower.indexOf("success") >= 0);
+    } else {
+        WiFiClient client;
+        client.setTimeout(5000);
+        if (!http.begin(client, url)) {
+            result.message = "unable to initialize HTTP client";
+            return result;
+        }
+        result.http_status = http.GET();
+        String response = http.getString();
+        response.trim();
+        http.end();
+
+        String lower = response;
+        lower.toLowerCase();
+        result.success = result.http_status >= 200 && result.http_status < 300 &&
+                         (lower.length() == 0 || lower.indexOf("success") >= 0);
     }
 
-    result.http_status = http.GET();
-    String response = http.getString();
-    response.trim();
-    http.end();
-
-    String lower = response;
-    lower.toLowerCase();
-    result.success = result.http_status >= 200 && result.http_status < 300 &&
-                     (lower.length() == 0 || lower.indexOf("success") >= 0);
     if (result.success) {
         result.message = "success";
     } else if (result.http_status <= 0) {

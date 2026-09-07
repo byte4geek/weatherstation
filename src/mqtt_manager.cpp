@@ -1,6 +1,7 @@
 // File: src/mqtt_manager.cpp
 #include "globals.h"
 #include "mqtt_manager.h"
+#include "weather_observation.h"
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
 
@@ -87,6 +88,7 @@ void publish_ha_discovery() {
     }
     if (has_aht20) {
         publish_ha_sensor("humidity", "Humidity", "%", "humidity", "{{ value_json.humidity }}");
+        publish_ha_sensor("dew_point", "Dew Point", t_unit.c_str(), "temperature", "{{ value_json.dew_point }}");
     }
     if (has_bmp280) {
         publish_ha_sensor("pressure", "Pressure", p_unit.c_str(), "pressure", "{{ value_json.pressure }}");
@@ -210,8 +212,16 @@ void publish_weather_data() {
     }
     if (has_aht20) {
         doc["humidity"] = serialized(String(humidity_pct, mqtt_decimals));
+        float dew_c = calculate_dew_point_c(temperature_c, humidity_pct);
+        if (isfinite(dew_c)) {
+            float dew_val = use_imperial ? (dew_c * 1.8f + 32.0f) : dew_c;
+            doc["dew_point"] = serialized(String(dew_val, mqtt_decimals));
+        } else {
+            doc["dew_point"] = nullptr;
+        }
     } else {
         doc["humidity"] = nullptr;
+        doc["dew_point"] = nullptr;
     }
     if (has_bmp280) {
         float press_val = use_imperial ? (pressure_hpa * 0.02953f) : pressure_hpa;
