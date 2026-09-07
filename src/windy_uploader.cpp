@@ -19,6 +19,7 @@ WindyUploadResult upload_windy_observation(const String& station_id,
 
     BearSSL::WiFiClientSecure client;
     client.setInsecure();
+    client.setBufferSizes(1024, 512);
     client.setTimeout(5000);
     HTTPClient http;
     http.setTimeout(5000);

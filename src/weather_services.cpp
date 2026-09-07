@@ -30,11 +30,63 @@
 
 namespace {
 #if WEATHER_UPLOAD_ANY
+struct SensorFlags {
+    bool temp = true;
+    bool hum = true;
+    bool press = true;
+    bool wind = true;
+    bool rain = true;
+
+    uint8_t to_mask() const {
+        uint8_t m = 0;
+        if (temp)  m |= 0x01;
+        if (hum)   m |= 0x02;
+        if (press) m |= 0x04;
+        if (wind)  m |= 0x08;
+        if (rain)  m |= 0x10;
+        return m;
+    }
+
+    void from_mask(uint8_t m) {
+        temp  = (m & 0x01) != 0;
+        hum   = (m & 0x02) != 0;
+        press = (m & 0x04) != 0;
+        wind  = (m & 0x08) != 0;
+        rain  = (m & 0x10) != 0;
+    }
+};
+
+WeatherObservation apply_sensor_flags(WeatherObservation obs, const SensorFlags& flags) {
+    if (!flags.temp) {
+        obs.has_temperature = false;
+        obs.has_dew_point = false;
+    }
+    if (!flags.hum) {
+        obs.has_humidity = false;
+        obs.has_dew_point = false;
+    }
+    if (!flags.press) {
+        obs.has_pressure = false;
+    }
+    if (!flags.wind) {
+        obs.has_wind_speed = false;
+        obs.has_wind_direction = false;
+        obs.has_wind_gust = false;
+    }
+    if (!flags.rain) {
+        obs.has_rain_hour = false;
+        obs.has_rain_24h = false;
+        obs.has_rain_today = false;
+    }
+    return obs;
+}
+
 struct ServiceConfig {
     bool enabled;
     String station_id;
     String station_key;
     uint16_t interval_seconds;
+    SensorFlags sensors;
 };
 
 struct ServiceRuntime {
@@ -56,6 +108,7 @@ struct CwopConfig {
     uint16_t interval_seconds;
     String server;
     uint16_t port;
+    SensorFlags sensors;
 };
 #endif
 
@@ -67,6 +120,7 @@ struct AwekasConfig {
     float latitude;
     float longitude;
     uint16_t interval_seconds;
+    SensorFlags sensors;
 };
 #endif
 
@@ -101,7 +155,7 @@ ServiceRuntime cwop_runtime = {};
 #endif
 
 #if WEATHER_UPLOAD_WUNDERGROUND
-const char* WU_URL = "https://weatherstation.wunderground.com/weatherstation/updateweatherstation.php";
+const char* WU_URL = "http://weatherstation.wunderground.com/weatherstation/updateweatherstation.php";
 #endif
 #if WEATHER_UPLOAD_PWSWEATHER
 const char* PWS_URL = "https://pwsupdate.pwsweather.com/api/v1/submitwx";
@@ -217,12 +271,32 @@ void run_service(const char* name,
     }
 
     WuUploadResult result = upload_wu_observation(
-        name, url, config.station_id, config.station_key, observation);
+        name, url, config.station_id, config.station_key, apply_sensor_flags(observation, config.sensors));
     runtime.last_http_status = result.http_status;
     runtime.last_message = result.message;
     if (result.success) runtime.last_success_utc = observation.timestamp_utc;
 }
 #endif
+
+void append_sensors_config(JsonObject target, const SensorFlags& flags) {
+    JsonObject sens = target["sensors"].to<JsonObject>();
+    sens["temp"] = flags.temp;
+    sens["hum"] = flags.hum;
+    sens["press"] = flags.press;
+    sens["wind"] = flags.wind;
+    sens["rain"] = flags.rain;
+}
+
+void parse_sensors_config(JsonVariantConst source, SensorFlags& flags) {
+    if (source["sensors"].is<JsonObject>()) {
+        JsonObjectConst sens = source["sensors"];
+        flags.temp  = sens["temp"]  | true;
+        flags.hum   = sens["hum"]   | true;
+        flags.press = sens["press"] | true;
+        flags.wind  = sens["wind"]  | true;
+        flags.rain  = sens["rain"]  | true;
+    }
+}
 
 void append_service(JsonObject target,
                     const ServiceConfig& config,
@@ -232,6 +306,7 @@ void append_service(JsonObject target,
     target["interval"] = config.interval_seconds;
     target["has_key"] = config.station_key.length() > 0;
     if (include_secrets) target["station_key"] = config.station_key;
+    append_sensors_config(target, config.sensors);
 }
 
 void save_service(JsonVariantConst source,
@@ -240,6 +315,7 @@ void save_service(JsonVariantConst source,
                   const char* id_key,
                   const char* secret_key,
                   const char* interval_key,
+                  const char* sens_key,
                   Preferences& settings) {
     if (source.isNull()) return;
     config.enabled = source["enabled"] | false;
@@ -247,11 +323,13 @@ void save_service(JsonVariantConst source,
     config.interval_seconds = safe_interval(source["interval"] | 60);
     String new_key = source["station_key"] | "";
     if (new_key.length() > 0) config.station_key = new_key;
+    parse_sensors_config(source, config.sensors);
 
     settings.putBool(enabled_key, config.enabled);
     settings.putString(id_key, config.station_id);
     settings.putString(secret_key, config.station_key);
     settings.putInt(interval_key, config.interval_seconds);
+    settings.putUChar(sens_key, config.sensors.to_mask());
 }
 
 void append_runtime(JsonObject target, const ServiceRuntime& runtime) {
@@ -282,7 +360,7 @@ void run_cwop(const WeatherObservation& observation) {
 
     CwopUploadResult result = upload_cwop_observation(
         cwop.server, cwop.port, cwop.station_id, cwop.passcode,
-        cwop.latitude, cwop.longitude, observation);
+        cwop.latitude, cwop.longitude, apply_sensor_flags(observation, cwop.sensors));
     cwop_runtime.last_http_status = 0;
     cwop_runtime.last_message = result.message;
     if (result.success) cwop_runtime.last_success_utc = observation.timestamp_utc;
@@ -308,7 +386,7 @@ void run_weathercloud(const WeatherObservation& observation) {
     }
 
     WeathercloudUploadResult result = upload_weathercloud_observation(
-        weathercloud.station_id, weathercloud.station_key, observation);
+        weathercloud.station_id, weathercloud.station_key, apply_sensor_flags(observation, weathercloud.sensors));
     weathercloud_runtime.last_http_status = result.http_status;
     weathercloud_runtime.last_message = result.message;
     if (result.success) weathercloud_runtime.last_success_utc = observation.timestamp_utc;
@@ -331,7 +409,7 @@ void run_windy(const WeatherObservation& observation) {
         return;
     }
     WindyUploadResult result = upload_windy_observation(
-        windy.station_id, windy.station_key, observation);
+        windy.station_id, windy.station_key, apply_sensor_flags(observation, windy.sensors));
     windy_runtime.last_http_status = result.http_status;
     windy_runtime.last_message = result.message;
     if (result.success) windy_runtime.last_success_utc = observation.timestamp_utc;
@@ -357,7 +435,7 @@ void run_awekas(const WeatherObservation& observation) {
         return;
     }
     AwekasUploadResult result = upload_awekas_observation(
-        awekas.username, awekas.password, awekas.latitude, awekas.longitude, observation);
+        awekas.username, awekas.password, awekas.latitude, awekas.longitude, apply_sensor_flags(observation, awekas.sensors));
     awekas_runtime.last_http_status = result.http_status;
     awekas_runtime.last_message = result.message;
     if (result.success) awekas_runtime.last_success_utc = observation.timestamp_utc;
@@ -380,7 +458,7 @@ void run_wow_be(const WeatherObservation& observation) {
         return;
     }
     WowBeUploadResult result = upload_wow_be_observation(
-        wow_be.station_id, wow_be.station_key, observation);
+        wow_be.station_id, wow_be.station_key, apply_sensor_flags(observation, wow_be.sensors));
     wow_be_runtime.last_http_status = result.http_status;
     wow_be_runtime.last_message = result.message;
     if (result.success) wow_be_runtime.last_success_utc = observation.timestamp_utc;
@@ -397,12 +475,14 @@ void setup_weather_services() {
     wunderground.station_id = prefs.getString("wug_id", "");
     wunderground.station_key = prefs.getString("wug_key", "");
     wunderground.interval_seconds = safe_interval(prefs.getInt("wug_int", 60));
+    wunderground.sensors.from_mask(prefs.getUChar("wug_sens", 0x1F));
 #endif
 #if WEATHER_UPLOAD_PWSWEATHER
     pwsweather.enabled = prefs.getBool("pws_on", false);
     pwsweather.station_id = prefs.getString("pws_id", "");
     pwsweather.station_key = prefs.getString("pws_key", "");
     pwsweather.interval_seconds = safe_interval(prefs.getInt("pws_int", 60));
+    pwsweather.sensors.from_mask(prefs.getUChar("pws_sens", 0x1F));
 #endif
 #if WEATHER_UPLOAD_CWOP
     cwop.enabled = prefs.getBool("cwop_on", false);
@@ -414,18 +494,21 @@ void setup_weather_services() {
     cwop.interval_seconds = static_cast<uint16_t>(constrain(prefs.getInt("cwop_int", 300), 300, 3600));
     cwop.server = prefs.getString("cwop_host", "cwop.aprs.net");
     cwop.port = static_cast<uint16_t>(constrain(prefs.getInt("cwop_port", 14580), 1, 65535));
+    cwop.sensors.from_mask(prefs.getUChar("cwop_sens", 0x1F));
 #endif
 #if WEATHER_UPLOAD_WEATHERCLOUD
     weathercloud.enabled = prefs.getBool("wcl_on", false);
     weathercloud.station_id = prefs.getString("wcl_id", "");
     weathercloud.station_key = prefs.getString("wcl_key", "");
     weathercloud.interval_seconds = safe_interval(prefs.getInt("wcl_int", 600), 600);
+    weathercloud.sensors.from_mask(prefs.getUChar("wcl_sens", 0x1F));
 #endif
 #if WEATHER_UPLOAD_WINDY
     windy.enabled = prefs.getBool("wnd_on", false);
     windy.station_id = prefs.getString("wnd_id", "");
     windy.station_key = prefs.getString("wnd_pass", "");
     windy.interval_seconds = safe_interval(prefs.getInt("wnd_int", 300), 300);
+    windy.sensors.from_mask(prefs.getUChar("wnd_sens", 0x1F));
 #endif
 #if WEATHER_UPLOAD_AWEKAS
     awekas.enabled = prefs.getBool("awk_on", false);
@@ -434,12 +517,14 @@ void setup_weather_services() {
     awekas.latitude = prefs.getFloat("awk_lat", NAN);
     awekas.longitude = prefs.getFloat("awk_lon", NAN);
     awekas.interval_seconds = safe_interval(prefs.getInt("awk_int", 300), 300);
+    awekas.sensors.from_mask(prefs.getUChar("awk_sens", 0x1F));
 #endif
 #if WEATHER_UPLOAD_WOW_BE
     wow_be.enabled = prefs.getBool("wow_on", false);
     wow_be.station_id = prefs.getString("wow_id", "");
     wow_be.station_key = prefs.getString("wow_key", "");
     wow_be.interval_seconds = safe_interval(prefs.getInt("wow_int", 300));
+    wow_be.sensors.from_mask(prefs.getUChar("wow_sens", 0x1F));
 #endif
     prefs.end();
 
@@ -533,6 +618,7 @@ void append_weather_services_config(JsonDocument& doc, bool include_secrets) {
     cwop_json["interval"] = cwop.interval_seconds;
     cwop_json["server"] = cwop.server;
     cwop_json["port"] = cwop.port;
+    append_sensors_config(cwop_json, cwop.sensors);
 #endif
 #if WEATHER_UPLOAD_WEATHERCLOUD
     append_service(services["weathercloud"].to<JsonObject>(), weathercloud, include_secrets);
@@ -549,6 +635,7 @@ void append_weather_services_config(JsonDocument& doc, bool include_secrets) {
     if (isfinite(awekas.latitude)) awekas_json["latitude"] = awekas.latitude;
     if (isfinite(awekas.longitude)) awekas_json["longitude"] = awekas.longitude;
     awekas_json["interval"] = awekas.interval_seconds;
+    append_sensors_config(awekas_json, awekas.sensors);
 #endif
 #if WEATHER_UPLOAD_WOW_BE
     append_service(services["wow_be"].to<JsonObject>(), wow_be, include_secrets);
@@ -565,11 +652,11 @@ void save_weather_services_config(JsonVariantConst config) {
     settings.begin("weather", false);
 #if WEATHER_UPLOAD_WUNDERGROUND
     save_service(config["wunderground"], wunderground,
-                 "wug_on", "wug_id", "wug_key", "wug_int", settings);
+                 "wug_on", "wug_id", "wug_key", "wug_int", "wug_sens", settings);
 #endif
 #if WEATHER_UPLOAD_PWSWEATHER
     save_service(config["pwsweather"], pwsweather,
-                 "pws_on", "pws_id", "pws_key", "pws_int", settings);
+                 "pws_on", "pws_id", "pws_key", "pws_int", "pws_sens", settings);
 #endif
 #if WEATHER_UPLOAD_CWOP
     JsonVariantConst cwop_json = config["cwop"];
@@ -586,6 +673,7 @@ void save_weather_services_config(JsonVariantConst config) {
             constrain(cwop_json["interval"] | 300, 300, 3600));
         cwop.server = cwop_json["server"] | "cwop.aprs.net";
         cwop.port = static_cast<uint16_t>(constrain(cwop_json["port"] | 14580, 1, 65535));
+        parse_sensors_config(cwop_json, cwop.sensors);
         settings.putBool("cwop_on", cwop.enabled);
         settings.putString("cwop_id", cwop.station_id);
         settings.putString("cwop_pass", cwop.passcode);
@@ -594,6 +682,7 @@ void save_weather_services_config(JsonVariantConst config) {
         settings.putInt("cwop_int", cwop.interval_seconds);
         settings.putString("cwop_host", cwop.server);
         settings.putInt("cwop_port", cwop.port);
+        settings.putUChar("cwop_sens", cwop.sensors.to_mask());
     }
 #endif
 #if WEATHER_UPLOAD_WEATHERCLOUD
@@ -604,10 +693,12 @@ void save_weather_services_config(JsonVariantConst config) {
         weathercloud.interval_seconds = safe_interval(weathercloud_json["interval"] | 600, 600);
         String new_key = weathercloud_json["station_key"] | "";
         if (new_key.length() > 0) weathercloud.station_key = new_key;
+        parse_sensors_config(weathercloud_json, weathercloud.sensors);
         settings.putBool("wcl_on", weathercloud.enabled);
         settings.putString("wcl_id", weathercloud.station_id);
         settings.putString("wcl_key", weathercloud.station_key);
         settings.putInt("wcl_int", weathercloud.interval_seconds);
+        settings.putUChar("wcl_sens", weathercloud.sensors.to_mask());
     }
 #endif
 #if WEATHER_UPLOAD_WINDY
@@ -618,10 +709,12 @@ void save_weather_services_config(JsonVariantConst config) {
         windy.interval_seconds = safe_interval(windy_json["interval"] | 300, 300);
         String new_password = windy_json["station_key"] | "";
         if (new_password.length() > 0) windy.station_key = new_password;
+        parse_sensors_config(windy_json, windy.sensors);
         settings.putBool("wnd_on", windy.enabled);
         settings.putString("wnd_id", windy.station_id);
         settings.putString("wnd_pass", windy.station_key);
         settings.putInt("wnd_int", windy.interval_seconds);
+        settings.putUChar("wnd_sens", windy.sensors.to_mask());
     }
 #endif
 #if WEATHER_UPLOAD_AWEKAS
@@ -634,12 +727,14 @@ void save_weather_services_config(JsonVariantConst config) {
         awekas.latitude = awekas_json["latitude"] | NAN;
         awekas.longitude = awekas_json["longitude"] | NAN;
         awekas.interval_seconds = safe_interval(awekas_json["interval"] | 300, 300);
+        parse_sensors_config(awekas_json, awekas.sensors);
         settings.putBool("awk_on", awekas.enabled);
         settings.putString("awk_user", awekas.username);
         settings.putString("awk_pass", awekas.password);
         settings.putFloat("awk_lat", awekas.latitude);
         settings.putFloat("awk_lon", awekas.longitude);
         settings.putInt("awk_int", awekas.interval_seconds);
+        settings.putUChar("awk_sens", awekas.sensors.to_mask());
     }
 #endif
 #if WEATHER_UPLOAD_WOW_BE
@@ -650,10 +745,12 @@ void save_weather_services_config(JsonVariantConst config) {
         wow_be.interval_seconds = safe_interval(wow_be_json["interval"] | 300);
         String new_key = wow_be_json["station_key"] | "";
         if (new_key.length() > 0) wow_be.station_key = new_key;
+        parse_sensors_config(wow_be_json, wow_be.sensors);
         settings.putBool("wow_on", wow_be.enabled);
         settings.putString("wow_id", wow_be.station_id);
         settings.putString("wow_key", wow_be.station_key);
         settings.putInt("wow_int", wow_be.interval_seconds);
+        settings.putUChar("wow_sens", wow_be.sensors.to_mask());
     }
 #endif
     settings.end();
