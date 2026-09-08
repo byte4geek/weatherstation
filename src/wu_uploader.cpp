@@ -72,6 +72,9 @@ String build_wu_query(const String& station_id,
     if (observation.has_rain_today) {
         append_parameter(query, "dailyrainin", value(observation.rain_today_mm / 25.4f, 3));
     }
+    if (observation.has_solar_radiation) {
+        append_parameter(query, "solarradiation", value(observation.solar_radiation_wm2, 1));
+    }
 
     append_parameter(query, "softwaretype", String("byte4geek-weatherstation-") + FIRMWARE_VERSION);
     append_parameter(query, "action", "updateraw");

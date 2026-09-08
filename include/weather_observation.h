@@ -10,6 +10,7 @@ struct WeatherObservation {
     bool has_humidity;
     bool has_pressure;
     bool has_dew_point;
+    bool has_solar_radiation;
     bool has_wind_speed;
     bool has_wind_direction;
     bool has_wind_gust;
@@ -21,6 +22,7 @@ struct WeatherObservation {
     float humidity_pct;
     float pressure_hpa;
     float dew_point_c;
+    float solar_radiation_wm2;
     float wind_speed_kmh;
     float wind_direction_deg;
     float wind_gust_10m_kmh;
@@ -34,10 +36,12 @@ struct WeatherObservationInput {
     bool has_temperature;
     bool has_humidity;
     bool has_pressure;
+    bool has_solar_radiation;
     bool has_wind_direction;
     float temperature_c;
     float humidity_pct;
     float pressure_hpa;
+    float solar_radiation_wm2;
     float wind_speed_kmh;
     float wind_direction_deg;
     float wind_gust_10m_kmh;

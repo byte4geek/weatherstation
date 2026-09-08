@@ -2,6 +2,7 @@
 #include "globals.h"
 #include "mqtt_manager.h"
 #include "weather_observation.h"
+#include "weather_services.h"
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
 
@@ -85,10 +86,14 @@ void publish_ha_discovery() {
     // Environmental (using safe/standard classes)
     if (has_aht20 || has_bmp280) {
         publish_ha_sensor("temperature", "Temperature", t_unit.c_str(), "temperature", "{{ value_json.temperature }}");
+        publish_ha_sensor("temp_min", "Min Temperature", t_unit.c_str(), "temperature", "{{ value_json.temp_min }}");
+        publish_ha_sensor("temp_max", "Max Temperature", t_unit.c_str(), "temperature", "{{ value_json.temp_max }}");
     }
     if (has_aht20) {
         publish_ha_sensor("humidity", "Humidity", "%", "humidity", "{{ value_json.humidity }}");
-        publish_ha_sensor("dew_point", "Dew Point", t_unit.c_str(), "temperature", "{{ value_json.dew_point }}");
+        if (has_aht20 || has_bmp280) {
+            publish_ha_sensor("dew_point", "Dew Point", t_unit.c_str(), "temperature", "{{ value_json.dew_point }}");
+        }
     }
     if (has_bmp280) {
         publish_ha_sensor("pressure", "Pressure", p_unit.c_str(), "pressure", "{{ value_json.pressure }}");
@@ -101,17 +106,19 @@ void publish_ha_discovery() {
         publish_ha_sensor("aqi", "AQI", "", "", "{{ value_json.aqi }}");
     }
     
-    // Lux (using safe/standard classes)
+    // Lux & Solar Radiation
     if (has_bh1750) {
         publish_ha_sensor("lux", "Luminosity", "lx", "illuminance", "{{ value_json.lux }}");
+        publish_ha_sensor("solar_radiation", "Solar Radiation", "W/m²", "irradiance", "{{ value_json.solar_radiation }}");
     }
     
-    // Wind (no device class for compatibility)
+    // Wind
     publish_ha_sensor("wind_speed", "Wind Speed", w_unit.c_str(), "", "{{ value_json.wind_speed }}");
     publish_ha_sensor("wind_speed_ms", "Wind Speed (m/s)", "m/s", "", "{{ value_json.wind_speed_ms }}");
     publish_ha_sensor("wind_speed_kt", "Wind Speed (knots)", "kt", "", "{{ value_json.wind_speed_kt }}");
 
-    publish_ha_sensor("wind_gust", "Wind Gust", w_unit.c_str(), "", "{{ value_json.wind_gust }}");
+    publish_ha_sensor("wind_gust", "Peak Wind Gust", w_unit.c_str(), "", "{{ value_json.wind_gust }}");
+    publish_ha_sensor("wind_gust_10m", "10-min Wind Gust", w_unit.c_str(), "", "{{ value_json.wind_gust_10m }}");
     publish_ha_sensor("wind_gust_ms", "Wind Gust (m/s)", "m/s", "", "{{ value_json.wind_gust_ms }}");
     publish_ha_sensor("wind_gust_kt", "Wind Gust (knots)", "kt", "", "{{ value_json.wind_gust_kt }}");
 
@@ -207,8 +214,22 @@ void publish_weather_data() {
     if (has_aht20 || has_bmp280) {
         float temp_val = use_imperial ? (temperature_c * 1.8f + 32.0f) : temperature_c;
         doc["temperature"] = serialized(String(temp_val, mqtt_decimals));
+        if (temp_min_c < 100.0f) {
+            float min_val = use_imperial ? (temp_min_c * 1.8f + 32.0f) : temp_min_c;
+            doc["temp_min"] = serialized(String(min_val, mqtt_decimals));
+        } else {
+            doc["temp_min"] = nullptr;
+        }
+        if (temp_max_c > -100.0f) {
+            float max_val = use_imperial ? (temp_max_c * 1.8f + 32.0f) : temp_max_c;
+            doc["temp_max"] = serialized(String(max_val, mqtt_decimals));
+        } else {
+            doc["temp_max"] = nullptr;
+        }
     } else {
         doc["temperature"] = nullptr;
+        doc["temp_min"] = nullptr;
+        doc["temp_max"] = nullptr;
     }
     if (has_aht20) {
         doc["humidity"] = serialized(String(humidity_pct, mqtt_decimals));
@@ -245,6 +266,8 @@ void publish_weather_data() {
     doc["wind_speed_kt"] = serialized(String(wind_speed_kmh * 0.539957f, mqtt_decimals));
 
     doc["wind_gust"] = serialized(String(wind_gust_kmh * w_mult, mqtt_decimals));
+    float gust_10m = get_wind_gust_10m_kmh();
+    doc["wind_gust_10m"] = serialized(String(gust_10m * w_mult, mqtt_decimals));
     doc["wind_gust_ms"] = serialized(String(wind_gust_kmh / 3.6f, mqtt_decimals));
     doc["wind_gust_kt"] = serialized(String(wind_gust_kmh * 0.539957f, mqtt_decimals));
     if (has_as5600) {
@@ -255,8 +278,10 @@ void publish_weather_data() {
 
     if (has_bh1750) {
         doc["lux"] = serialized(String(lux, mqtt_decimals));
+        doc["solar_radiation"] = serialized(String(solar_radiation_wm2, mqtt_decimals));
     } else {
         doc["lux"] = nullptr;
+        doc["solar_radiation"] = nullptr;
     }
 
     String topic = "tele/" + hostname + "/SENSOR";

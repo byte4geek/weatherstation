@@ -657,6 +657,7 @@ const char index_html[] PROGMEM = R"rawliteral(
                         <div class="card-title"><i class="mdi mdi-thermometer" style="color: #ef4444; font-size: 1.1rem; vertical-align: -2px; margin-right: 4px;"></i> Temperature</div>
                         <div class="card-value" id="val_temp">-- <span class="card-unit">°C</span></div>
                         <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;" id="val_dew">Dew Point: --</div>
+                        <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 2px;" id="val_temp_min_max">Min: -- &bull; Max: --</div>
                     </div>
                     <div class="card primary">
                         <div class="card-title"><i class="mdi mdi-water-percent" style="color: #06b6d4; font-size: 1.1rem; vertical-align: -2px; margin-right: 4px;"></i> Humidity</div>
@@ -692,7 +693,7 @@ const char index_html[] PROGMEM = R"rawliteral(
                     <div class="card primary">
                         <div class="card-title"><i class="mdi mdi-weather-tornado" style="color: #f97316; font-size: 1.1rem; vertical-align: -2px; margin-right: 4px;"></i> Max Gust (Today)</div>
                         <div class="card-value" id="val_wind_gust">-- <span class="card-unit">km/h</span></div>
-                        <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;" id="val_wind_gust_sub">-- m/s &bull; -- kt</div>
+                        <div style="font-size: 0.85rem; color: var(--primary); margin-top: 4px;" id="val_wind_gust_10m">10-min Gust: --</div>
                     </div>
                     <div class="card primary">
                         <div class="card-title"><i class="mdi mdi-compass-outline" style="color: #14b8a6; font-size: 1.1rem; vertical-align: -2px; margin-right: 4px;"></i> Wind Direction</div>
@@ -701,6 +702,7 @@ const char index_html[] PROGMEM = R"rawliteral(
                     <div class="card primary">
                         <div class="card-title"><i class="mdi mdi-white-balance-sunny" style="color: #eab308; font-size: 1.1rem; vertical-align: -2px; margin-right: 4px;"></i> Luminosity</div>
                         <div class="card-value" id="val_lux">-- <span class="card-unit">lx</span></div>
+                        <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;" id="val_solar_rad">Solar Rad: -- W/m²</div>
                     </div>
                 </div>
 
@@ -771,6 +773,7 @@ const char index_html[] PROGMEM = R"rawliteral(
                             <div class="c-tile-label">Temp</div>
                             <div class="c-tile-val" id="c_val_temp">-- <span class="c-unit">°C</span></div>
                             <div class="c-tile-sub" id="c_val_dew">Dew: --</div>
+                            <div class="c-tile-sub" id="c_val_temp_min_max" style="font-size: 0.7rem;">Min: -- &bull; Max: --</div>
                         </div>
                     </div>
 
@@ -795,6 +798,7 @@ const char index_html[] PROGMEM = R"rawliteral(
                         <div class="c-tile-content">
                             <div class="c-tile-label">Luminosity</div>
                             <div class="c-tile-val" id="c_val_lux">-- <span class="c-unit">lx</span></div>
+                            <div class="c-tile-sub" id="c_val_solar_rad">-- W/m²</div>
                         </div>
                     </div>
 
@@ -1050,6 +1054,10 @@ const char index_html[] PROGMEM = R"rawliteral(
                                 <input type="number" id="conf_w_dir_off" min="0" max="359" style="flex: 1; margin: 0;">
                                 <button type="button" class="btn btn-sec" onclick="calibrateNorth()" style="margin: 0; padding: 0 15px; font-size: 0.85rem; height: 38px; border-radius: 6px; white-space: nowrap;">Calibrate North</button>
                             </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="conf_w_rst_hr">Daily Gust & Min/Max Reset Hour (0&ndash;23, 0 = Midnight):</label>
+                            <input type="number" id="conf_w_rst_hr" min="0" max="23">
                         </div>
                     </div>
 
@@ -1724,6 +1732,7 @@ R"rawliteral(
                     
                     const valTemp = document.getElementById('val_temp');
                     const valDew = document.getElementById('val_dew');
+                    const valTempMinMax = document.getElementById('val_temp_min_max');
                     if (data.has_aht20 || data.has_bmp280) {
                         const tVal = isImp ? (data.temp * 1.8 + 32.0) : data.temp;
                         const tUnit = isImp ? '°F' : '°C';
@@ -1736,9 +1745,19 @@ R"rawliteral(
                                 valDew.innerHTML = `Dew Point: N/A`;
                             }
                         }
+                        if (valTempMinMax) {
+                            if (data.temp_min !== undefined && data.temp_min !== null && data.temp_max !== undefined && data.temp_max !== null) {
+                                const minV = isImp ? (data.temp_min * 1.8 + 32.0) : data.temp_min;
+                                const maxV = isImp ? (data.temp_max * 1.8 + 32.0) : data.temp_max;
+                                valTempMinMax.innerHTML = `Min: ${minV.toFixed(1)} ${tUnit} &bull; Max: ${maxV.toFixed(1)} ${tUnit}`;
+                            } else {
+                                valTempMinMax.innerHTML = `Min: N/A &bull; Max: N/A`;
+                            }
+                        }
                     } else {
                         valTemp.innerHTML = '<span style="color: var(--danger); font-size: 1rem; font-weight: bold;">Sensor not found</span>';
                         if (valDew) valDew.innerHTML = '';
+                        if (valTempMinMax) valTempMinMax.innerHTML = '';
                     }
 
                     const valHum = document.getElementById('val_hum');
@@ -1773,23 +1792,22 @@ R"rawliteral(
 
                     const wSpeed = isImp ? (data.wind_speed_mph || (data.wind_speed * 0.621371)) : data.wind_speed;
                     const wGust  = isImp ? (data.wind_gust_mph  || (data.wind_gust  * 0.621371)) : data.wind_gust;
+                    const wGust10m = isImp ? ((data.wind_gust_10m || 0) * 0.621371) : (data.wind_gust_10m || 0);
                     const wUnit  = isImp ? 'mph' : 'km/h';
 
                     document.getElementById('val_wind_speed').innerHTML = `${wSpeed.toFixed(1)} <span class="card-unit">${wUnit}</span>`;
                     document.getElementById('val_wind_gust').innerHTML = `${wGust.toFixed(1)} <span class="card-unit">${wUnit}</span>`;
+
+                    const valGust10m = document.getElementById('val_wind_gust_10m');
+                    if (valGust10m) {
+                        valGust10m.innerHTML = `10-min Gust: ${wGust10m.toFixed(1)} ${wUnit}`;
+                    }
 
                     const subSpeed = document.getElementById('val_wind_speed_sub');
                     if (subSpeed) {
                         const ms = data.wind_speed_ms !== undefined ? data.wind_speed_ms : (data.wind_speed / 3.6);
                         const kt = data.wind_speed_kt !== undefined ? data.wind_speed_kt : (data.wind_speed * 0.539957);
                         subSpeed.innerHTML = `${ms.toFixed(1)} m/s &bull; ${kt.toFixed(1)} kt`;
-                    }
-
-                    const subGust = document.getElementById('val_wind_gust_sub');
-                    if (subGust) {
-                        const ms = data.wind_gust_ms !== undefined ? data.wind_gust_ms : (data.wind_gust / 3.6);
-                        const kt = data.wind_gust_kt !== undefined ? data.wind_gust_kt : (data.wind_gust * 0.539957);
-                        subGust.innerHTML = `${ms.toFixed(1)} m/s &bull; ${kt.toFixed(1)} kt`;
                     }
 
                     const valWindDir = document.getElementById('val_wind_dir');
@@ -1800,10 +1818,16 @@ R"rawliteral(
                     }
 
                     const valLux = document.getElementById('val_lux');
+                    const valSolarRad = document.getElementById('val_solar_rad');
                     if (data.has_bh1750) {
                         valLux.innerHTML = `${data.lux.toFixed(0)} <span class="card-unit">lx</span>`;
+                        if (valSolarRad) {
+                            const radVal = data.solar_radiation !== undefined && data.solar_radiation !== null ? data.solar_radiation : 0;
+                            valSolarRad.innerHTML = `Solar Rad: ${radVal.toFixed(1)} W/m²`;
+                        }
                     } else {
                         valLux.innerHTML = '<span style="color: var(--danger); font-size: 1rem; font-weight: bold;">Sensor not found</span>';
+                        if (valSolarRad) valSolarRad.innerHTML = '';
                     }
 
                     const badge = document.getElementById('rain_status_badge');
@@ -1821,6 +1845,7 @@ R"rawliteral(
                     if (document.getElementById('compact_dashboard_board')) {
                         const cTemp = document.getElementById('c_val_temp');
                         const cDew = document.getElementById('c_val_dew');
+                        const cTempMinMax = document.getElementById('c_val_temp_min_max');
                         if (cTemp) {
                             if (data.has_aht20 || data.has_bmp280) {
                                 const tVal = isImp ? (data.temp * 1.8 + 32.0) : data.temp;
@@ -1834,9 +1859,19 @@ R"rawliteral(
                                         cDew.innerHTML = `Dew: N/A`;
                                     }
                                 }
+                                if (cTempMinMax) {
+                                    if (data.temp_min !== undefined && data.temp_min !== null && data.temp_max !== undefined && data.temp_max !== null) {
+                                        const minV = isImp ? (data.temp_min * 1.8 + 32.0) : data.temp_min;
+                                        const maxV = isImp ? (data.temp_max * 1.8 + 32.0) : data.temp_max;
+                                        cTempMinMax.innerHTML = `Min: ${minV.toFixed(1)} &bull; Max: ${maxV.toFixed(1)} ${tUnit}`;
+                                    } else {
+                                        cTempMinMax.innerHTML = `Min: -- &bull; Max: --`;
+                                    }
+                                }
                             } else {
                                 cTemp.innerHTML = '<span style="color: var(--danger); font-size: 0.85rem;">N/A</span>';
                                 if (cDew) cDew.innerHTML = '';
+                                if (cTempMinMax) cTempMinMax.innerHTML = '';
                             }
                         }
 
@@ -1862,11 +1897,17 @@ R"rawliteral(
                         }
 
                         const cLux = document.getElementById('c_val_lux');
+                        const cSolarRad = document.getElementById('c_val_solar_rad');
                         if (cLux) {
                             if (data.has_bh1750) {
                                 cLux.innerHTML = `${data.lux.toFixed(0)} <span class="c-unit">lx</span>`;
+                                if (cSolarRad) {
+                                    const radVal = data.solar_radiation !== undefined && data.solar_radiation !== null ? data.solar_radiation : 0;
+                                    cSolarRad.innerHTML = `${radVal.toFixed(1)} W/m²`;
+                                }
                             } else {
                                 cLux.innerHTML = '<span style="color: var(--danger); font-size: 0.85rem;">N/A</span>';
+                                if (cSolarRad) cSolarRad.innerHTML = '';
                             }
                         }
 
@@ -1875,7 +1916,7 @@ R"rawliteral(
                         const cWSub = document.getElementById('c_val_wind_sub');
                         if (cWSpd && cWGust && cWSub) {
                             cWSpd.innerHTML = `${wSpeed.toFixed(1)} <span class="c-unit">${wUnit}</span>`;
-                            cWGust.innerHTML = `(Gust: ${wGust.toFixed(1)})`;
+                            cWGust.innerHTML = `(Peak: ${wGust.toFixed(1)} &bull; 10m: ${wGust10m.toFixed(1)})`;
 
                             const ms = data.wind_speed_ms !== undefined ? data.wind_speed_ms : (data.wind_speed / 3.6);
                             const kt = data.wind_speed_kt !== undefined ? data.wind_speed_kt : (data.wind_speed * 0.539957);
@@ -2078,6 +2119,9 @@ R"rawliteral(
                     
                     document.getElementById('conf_w_deb').value = c.w_deb;
                     document.getElementById('conf_w_dir_off').value = c.w_dir_off;
+                    if (document.getElementById('conf_w_rst_hr')) {
+                        document.getElementById('conf_w_rst_hr').value = (c.w_rst_hr !== undefined) ? c.w_rst_hr : 0;
+                    }
                     document.getElementById('conf_w_spd_int').value = c.w_spd_int || 2;
                     document.getElementById('conf_w_spd_avg').value = c.w_spd_avg || 5;
                     document.getElementById('conf_w_dir_avg').value = c.w_dir_avg || 5;
@@ -2249,6 +2293,7 @@ R"rawliteral(
                 w_fac: document.getElementById('conf_w_fac') ? parseFloat(document.getElementById('conf_w_fac').value) : 3.0,
                 w_deb: parseInt(document.getElementById('conf_w_deb').value),
                 w_dir_off: parseInt(document.getElementById('conf_w_dir_off').value),
+                w_rst_hr: document.getElementById('conf_w_rst_hr') ? parseInt(document.getElementById('conf_w_rst_hr').value) : 0,
                 w_spd_int: parseInt(document.getElementById('conf_w_spd_int').value),
                 w_spd_avg: parseInt(document.getElementById('conf_w_spd_avg').value),
                 w_dir_avg: parseInt(document.getElementById('conf_w_dir_avg').value),
@@ -2942,6 +2987,7 @@ void setup_web_server() {
         
         doc["wind_speed"] = wind_speed_kmh;
         doc["wind_gust"] = wind_gust_kmh;
+        doc["wind_gust_10m"] = get_wind_gust_10m_kmh();
         doc["wind_speed_ms"] = wind_speed_kmh / 3.6f;
         doc["wind_speed_kt"] = wind_speed_kmh * 0.539957f;
         doc["wind_speed_mph"] = wind_speed_kmh * 0.621371f;
@@ -2965,8 +3011,10 @@ void setup_web_server() {
 
         if (has_bh1750) {
             doc["lux"] = lux;
+            doc["solar_radiation"] = solar_radiation_wm2;
         } else {
             doc["lux"] = nullptr;
+            doc["solar_radiation"] = nullptr;
         }
 
         if (has_as5600) {
@@ -2977,8 +3025,20 @@ void setup_web_server() {
         
         if (has_aht20 || has_bmp280) {
             doc["temp"] = temperature_c;
+            if (temp_min_c < 100.0f) {
+                doc["temp_min"] = temp_min_c;
+            } else {
+                doc["temp_min"] = nullptr;
+            }
+            if (temp_max_c > -100.0f) {
+                doc["temp_max"] = temp_max_c;
+            } else {
+                doc["temp_max"] = nullptr;
+            }
         } else {
             doc["temp"] = nullptr;
+            doc["temp_min"] = nullptr;
+            doc["temp_max"] = nullptr;
         }
         
         if (has_aht20) {
@@ -3052,6 +3112,7 @@ void setup_web_server() {
         doc["w_cal"] = wind_calibration;
         doc["w_deb"] = wind_debounce_ms;
         doc["w_dir_off"] = wind_dir_offset;
+        doc["w_rst_hr"] = gust_reset_hour;
         doc["w_spd_int"] = wind_speed_interval_s;
         doc["w_spd_avg"] = wind_speed_avg_samples;
         doc["w_dir_avg"] = wind_dir_avg_samples;
@@ -3220,6 +3281,9 @@ void setup_web_server() {
 
                 wind_dir_offset = doc["w_dir_off"] | 0;
                 local_prefs.putInt("w_dir_off", wind_dir_offset);
+
+                gust_reset_hour = max(0, min((int)(doc["w_rst_hr"] | 0), 23));
+                local_prefs.putInt("w_rst_hr", gust_reset_hour);
 
                 wind_speed_avg_samples = max(1, min((int)(doc["w_spd_avg"] | 5), WIND_AVG_MAX_SAMPLES));
                 wind_dir_avg_samples   = max(1, min((int)(doc["w_dir_avg"] | 5), WIND_AVG_MAX_SAMPLES));

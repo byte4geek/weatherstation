@@ -236,10 +236,12 @@ WeatherObservation capture_observation() {
     input.has_temperature = has_aht20 || has_bmp280;
     input.has_humidity = has_aht20;
     input.has_pressure = has_bmp280;
+    input.has_solar_radiation = has_bh1750;
     input.has_wind_direction = has_as5600;
     input.temperature_c = temperature_c;
     input.humidity_pct = humidity_pct;
     input.pressure_hpa = pressure_hpa;
+    input.solar_radiation_wm2 = solar_radiation_wm2;
     input.wind_speed_kmh = wind_speed_kmh;
     input.wind_direction_deg = wind_dir_deg;
     input.wind_gust_10m_kmh = upload_metrics.gust_10m_kmh();
@@ -836,4 +838,8 @@ void append_weather_services_status(JsonDocument& doc) {
 #if WEATHER_UPLOAD_WOW_BE
     append_runtime(services["wow_be"].to<JsonObject>(), wow_be_runtime);
 #endif
+}
+
+float get_wind_gust_10m_kmh() {
+    return upload_metrics.gust_10m_kmh();
 }

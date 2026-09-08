@@ -89,6 +89,8 @@ bool build_weathercloud_query(char* output,
         !append_number(output, output_size, used, "rain", lroundf(observation.rain_today_mm * 10.0f))) return false;
     if (observation.has_dew_point &&
         !append_number(output, output_size, used, "dew", lroundf(observation.dew_point_c * 10.0f))) return false;
+    if (observation.has_solar_radiation &&
+        !append_number(output, output_size, used, "solarrad", lroundf(observation.solar_radiation_wm2 * 10.0f))) return false;
 
     return append_parameter(output, output_size, used, "ver", firmware_version);
 }
