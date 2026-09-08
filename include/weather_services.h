@@ -34,3 +34,4 @@ void append_weather_services_config(JsonDocument& doc, bool include_secrets);
 void save_weather_services_config(JsonVariantConst config);
 bool queue_weather_service_test(WeatherServiceId service);
 void append_weather_services_status(JsonDocument& doc);
+float get_wind_gust_10m_kmh();

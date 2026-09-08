@@ -369,6 +369,8 @@ bool has_bmp280 = false;
 float temperature_c = 0.0f;
 float humidity_pct = 0.0f;
 float pressure_hpa = 0.0f;
+float temp_min_c = 999.0f;
+float temp_max_c = -999.0f;
 
 // --- ENS160 Air Quality sensor definition ---
 bool has_ens160 = false;
@@ -389,6 +391,7 @@ int wind_radius_mm = 80;
 int wind_magnets = 1;
 float wind_factor = 3.0f;
 uint32_t wind_debounce_ms = 15;
+int gust_reset_hour = 0; // Default: 0 (00:00 Midnight)
 
 // --- AS5600 definition ---
 bool has_as5600 = false;
@@ -398,6 +401,7 @@ int wind_dir_offset = 0;
 // --- BH1750 definition ---
 bool has_bh1750 = false;
 float lux = 0.0f;
+float solar_radiation_wm2 = 0.0f;
 float lux_cal_factor = 1.0f;
 float unfiltered_lux_ref = 0.0f;
 
@@ -431,6 +435,21 @@ void reset_wind_gust() {
     prefs.putFloat("w_gust", 0.0f);
     prefs.end();
     app_log("Wind gust counter cleared.");
+}
+
+void reset_daily_temp_min_max() {
+    if (temperature_c > -50.0f && temperature_c < 100.0f) {
+        temp_min_c = temperature_c;
+        temp_max_c = temperature_c;
+    } else {
+        temp_min_c = 999.0f;
+        temp_max_c = -999.0f;
+    }
+    prefs.begin("weather", false);
+    prefs.putFloat("t_min", temp_min_c);
+    prefs.putFloat("t_max", temp_max_c);
+    prefs.end();
+    app_log("Daily min/max temperature reset.");
 }
 
 // Global tracking variables
@@ -520,6 +539,10 @@ void load_settings() {
     wind_speed_avg_samples = prefs.getInt("w_spd_avg", 5);
     wind_dir_avg_samples   = prefs.getInt("w_dir_avg", 5);
     wind_speed_interval_s  = prefs.getInt("w_spd_int", 2);
+    gust_reset_hour        = prefs.getInt("w_rst_hr", 0);
+    wind_gust_kmh          = prefs.getFloat("w_gust", 0.0f);
+    temp_min_c             = prefs.getFloat("t_min", 999.0f);
+    temp_max_c             = prefs.getFloat("t_max", -999.0f);
 
     // Lux sensor calibration
     lux_cal_factor    = prefs.getFloat("lux_cal", 1.0f);
@@ -609,14 +632,18 @@ void read_lux_sensor() {
             } else {
                 lux = raw_lux;
             }
+            solar_radiation_wm2 = lux / 126.7f;
             if (debug_logs_enabled) {
-                app_log("[I2C Debug] [BH1750] Accepted read - Raw: %u, Lux: %s lx", raw, String(lux, 1).c_str());
+                app_log("[I2C Debug] [BH1750] Accepted read - Raw: %u, Lux: %s lx, Solar Rad: %s W/m²", raw, String(lux, 1).c_str(), String(solar_radiation_wm2, 1).c_str());
             }
         } else {
             if (debug_logs_enabled) {
                 app_log("[I2C Debug] [BH1750] Discarded - Read failed");
             }
         }
+    } else {
+        lux = 0.0f;
+        solar_radiation_wm2 = 0.0f;
     }
 }
 void read_environmental_sensors() {
@@ -708,6 +735,21 @@ void read_environmental_sensors() {
     // Apply temperature offset
     if (has_aht20 || has_bmp280) {
         temperature_c = raw_temp + temp_offset;
+        bool temp_updated = false;
+        if (temperature_c < temp_min_c) {
+            temp_min_c = temperature_c;
+            temp_updated = true;
+        }
+        if (temperature_c > temp_max_c) {
+            temp_max_c = temperature_c;
+            temp_updated = true;
+        }
+        if (temp_updated) {
+            prefs.begin("weather", false);
+            prefs.putFloat("t_min", temp_min_c);
+            prefs.putFloat("t_max", temp_max_c);
+            prefs.end();
+        }
     } else {
         temperature_c = 0.0f;
     }
@@ -1157,9 +1199,21 @@ void loop() {
         // Clear the bin we just landed on (the oldest bin from 24h ago)
         rain_history[current_minute_index] = 0;
 
-        // Reset daily wind gust at midnight (when the 1440-minute window rolls over to index 0)
-        if (current_minute_index == 0) {
-            reset_wind_gust();
+        // Reset daily wind gust and min/max temperature at configured hour (NTP time or 1440-minute rollover)
+        time_t now_t = time(nullptr);
+        struct tm timeinfo;
+        if (localtime_r(&now_t, &timeinfo) && timeinfo.tm_year > 120) {
+            static int last_reset_day = -1;
+            if (timeinfo.tm_mday != last_reset_day && timeinfo.tm_hour == gust_reset_hour && timeinfo.tm_min == 0) {
+                last_reset_day = timeinfo.tm_mday;
+                reset_wind_gust();
+                reset_daily_temp_min_max();
+            }
+        } else {
+            if (current_minute_index == 0) {
+                reset_wind_gust();
+                reset_daily_temp_min_max();
+            }
         }
 
         // Recalculate rain statistics

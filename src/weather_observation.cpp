@@ -30,6 +30,8 @@ WeatherObservation make_weather_observation(const WeatherObservationInput& input
                                input.humidity_pct >= 0.0f && input.humidity_pct <= 100.0f;
     observation.has_pressure = input.has_pressure && valid(input.pressure_hpa) &&
                                input.pressure_hpa > 0.0f;
+    observation.has_solar_radiation = input.has_solar_radiation && valid(input.solar_radiation_wm2) &&
+                                       input.solar_radiation_wm2 >= 0.0f;
     observation.has_wind_speed = valid(input.wind_speed_kmh) && input.wind_speed_kmh >= 0.0f;
     observation.has_wind_direction = input.has_wind_direction &&
                                      valid(input.wind_direction_deg) &&
@@ -44,6 +46,7 @@ WeatherObservation make_weather_observation(const WeatherObservationInput& input
     observation.temperature_c = input.temperature_c;
     observation.humidity_pct = input.humidity_pct;
     observation.pressure_hpa = input.pressure_hpa;
+    observation.solar_radiation_wm2 = input.solar_radiation_wm2;
     observation.wind_speed_kmh = input.wind_speed_kmh;
     observation.wind_direction_deg = input.wind_direction_deg;
     observation.wind_gust_10m_kmh = input.wind_gust_10m_kmh;

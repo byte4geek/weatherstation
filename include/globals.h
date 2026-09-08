@@ -22,6 +22,8 @@ extern bool has_bmp280;
 extern float temperature_c;
 extern float humidity_pct;
 extern float pressure_hpa;
+extern float temp_min_c;
+extern float temp_max_c;
 
 // --- ENS160 AIR QUALITY SENSOR DATA ---
 extern bool has_ens160;
@@ -42,6 +44,7 @@ extern float wind_dir_deg;
 // --- BH1750 LUX SENSOR DATA ---
 extern bool has_bh1750;
 extern float lux;
+extern float solar_radiation_wm2;
 extern float lux_cal_factor;
 extern float unfiltered_lux_ref;
 
@@ -93,6 +96,7 @@ extern int wind_dir_offset;
 extern int wind_speed_avg_samples;
 extern int wind_dir_avg_samples;
 extern int wind_speed_interval_s;
+extern int gust_reset_hour; // Default: 0 (00:00 Midnight)
 
 #define WIND_AVG_MAX_SAMPLES 60
 extern int wind_speed_buf_idx;
@@ -101,6 +105,7 @@ extern int wind_speed_buf_count;
 extern int wind_dir_buf_count;
 
 void reset_wind_gust();
+void reset_daily_temp_min_max();
 uint16_t read_as5600_raw_angle();
 
 // --- GLOBAL INSTANCES ---
