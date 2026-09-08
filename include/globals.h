@@ -6,7 +6,7 @@
 #include <PubSubClient.h>
 
 // --- Firmware Version ---
-#define FIRMWARE_VERSION "1.0.5"
+#define FIRMWARE_VERSION "1.0.5b"
 
 // --- RAIN DATA CONFIGURATION ---
 extern volatile uint32_t total_bucket_tips;
