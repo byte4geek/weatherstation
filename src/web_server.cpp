@@ -754,7 +754,7 @@ const char index_html[] PROGMEM = R"rawliteral(
                     <div class="c-title">
                         <i class="mdi mdi-weather-partly-cloudy" style="color: var(--primary); font-size: 1.4rem;"></i>
                         <span>Weather Station</span>
-                        <span class="c-badge-ver">v<span id="c_val_ver">1.0.5b</span></span>
+                        <span class="c-badge-ver">v<span id="c_val_ver">--</span></span>
                     </div>
                     <div class="c-header-badges">
                         <span id="c_rain_badge" class="c-status-badge badge-clear">
@@ -1728,6 +1728,10 @@ R"rawliteral(
 
                     if (data.ui_compact !== undefined) {
                         toggleUiMode(data.ui_compact ? 'compact' : 'classic');
+                    }
+                    if (data.fw_version || data.version) {
+                        const cVer = document.getElementById('c_val_ver');
+                        if (cVer) cVer.innerText = data.fw_version || data.version;
                     }
                     
                     const valTemp = document.getElementById('val_temp');
@@ -2977,6 +2981,8 @@ void setup_web_server() {
 
     server.on("/api/status", HTTP_GET, []() {
         JsonDocument doc;
+        doc["fw_version"] = FIRMWARE_VERSION;
+        doc["version"] = FIRMWARE_VERSION;
         doc["use_imperial"] = use_imperial;
         doc["ui_compact"] = ui_compact;
         doc["tips"] = total_bucket_tips;
