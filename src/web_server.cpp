@@ -754,7 +754,7 @@ const char index_html[] PROGMEM = R"rawliteral(
                     <div class="c-title">
                         <i class="mdi mdi-weather-partly-cloudy" style="color: var(--primary); font-size: 1.4rem;"></i>
                         <span>Weather Station</span>
-                        <span class="c-badge-ver">v<span id="c_val_ver">1.0.5</span></span>
+                        <span class="c-badge-ver">v<span id="c_val_ver">1.0.5b</span></span>
                     </div>
                     <div class="c-header-badges">
                         <span id="c_rain_badge" class="c-status-badge badge-clear">
