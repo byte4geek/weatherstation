@@ -113,7 +113,7 @@ Returns current configuration settings, I2C pin assignments, calibration constan
 #### Sample Response (`200 OK`)
 ```json
 {
-  "fw_version": "1.0.5b",
+  "fw_version": "1.0.5",
   "hostname": "WeatherStation",
   "use_imperial": false,
   "ui_compact": false,
