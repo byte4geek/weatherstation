@@ -2863,12 +2863,18 @@ String execute_console_command(String cmd) {
         total_bucket_tips = 0;
         last_processed_tips = 0;
         total_rain_mm = 0.0;
+        day_start_tips = 0;
+        rain_day_key = -1;
         memset(rain_history, 0, sizeof(rain_history));
         rolling_rain_hour = 0.0;
         rolling_rain_day = 0.0;
         
         prefs.begin("weather", false);
         prefs.putLong("tips", 0);
+        prefs.putLong("day_start_tips", 0);
+        prefs.putInt("rain_day_key", -1);
+        prefs.remove("rain_60m");
+        prefs.remove("rain_time");
         prefs.end();
         
         app_log("Rain counters cleared.");
@@ -3561,12 +3567,18 @@ void setup_web_server() {
         total_bucket_tips = 0;
         last_processed_tips = 0;
         total_rain_mm = 0.0;
+        day_start_tips = 0;
+        rain_day_key = -1;
         memset(rain_history, 0, sizeof(rain_history));
         rolling_rain_hour = 0.0;
         rolling_rain_day = 0.0;
         
         prefs.begin("weather", false);
         prefs.putLong("tips", 0);
+        prefs.putLong("day_start_tips", 0);
+        prefs.putInt("rain_day_key", -1);
+        prefs.remove("rain_60m");
+        prefs.remove("rain_time");
         prefs.end();
         
         app_log("Rain counters reset via WebUI.");

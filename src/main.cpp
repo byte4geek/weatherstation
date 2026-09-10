@@ -295,6 +295,8 @@ volatile uint32_t total_bucket_tips = 0;
 float total_rain_mm = 0.0;
 float rolling_rain_hour = 0.0;
 float rolling_rain_day = 0.0;
+uint32_t day_start_tips = 0;
+int rain_day_key = -1;
 bool is_raining = false;
 
 uint16_t rain_history[HISTORY_MINUTES] = {0};
@@ -472,7 +474,28 @@ void attach_sensor_interrupt() {
     app_log("Rain gauge interrupt configured on GPIO %d", rain_sensor_pin);
 }
 
-// Recompute rolling rain rates based on history array
+// Save rain statistics and rolling history to flash memory
+void save_rain_persistence() {
+    time_t now_t = time(nullptr);
+    prefs.begin("weather", false);
+    prefs.putLong("tips", total_bucket_tips);
+    prefs.putLong("day_start_tips", day_start_tips);
+    prefs.putInt("rain_day_key", rain_day_key);
+
+    uint16_t rain_60m[60] = {0};
+    for (int i = 0; i < 60; i++) {
+        int idx = (current_minute_index - i + HISTORY_MINUTES) % HISTORY_MINUTES;
+        rain_60m[59 - i] = rain_history[idx];
+    }
+    prefs.putBytes("rain_60m", rain_60m, sizeof(rain_60m));
+
+    if (now_t > 1577836800) { // Valid timestamp (> Jan 1 2020)
+        prefs.putULong("rain_time", (uint32_t)now_t);
+    }
+    prefs.end();
+}
+
+// Recompute rolling rain rates based on history array and day_start_tips
 void recalculate_rolling_rain() {
     uint32_t hour_tips = 0;
     uint32_t day_tips = 0;
@@ -493,8 +516,84 @@ void recalculate_rolling_rain() {
     }
 
     rolling_rain_hour = hour_tips * rain_calibration;
-    rolling_rain_day = day_tips * rain_calibration;
+
+    uint32_t effective_day_tips = day_tips;
+    if (total_bucket_tips >= day_start_tips) {
+        uint32_t persistent_day_tips = total_bucket_tips - day_start_tips;
+        if (persistent_day_tips > effective_day_tips) {
+            effective_day_tips = persistent_day_tips;
+        }
+    }
+
+    rolling_rain_day = effective_day_tips * rain_calibration;
     is_raining = (five_min_tips > 0);
+}
+
+void restore_rain_persistence() {
+    prefs.begin("weather", false);
+    total_bucket_tips = prefs.getLong("tips", 0);
+    last_processed_tips = total_bucket_tips;
+    total_rain_mm = total_bucket_tips * rain_calibration;
+
+    day_start_tips = prefs.getLong("day_start_tips", total_bucket_tips);
+    rain_day_key = prefs.getInt("rain_day_key", -1);
+
+    uint32_t saved_time = prefs.getULong("rain_time", 0);
+    uint16_t saved_60m[60] = {0};
+    size_t len = prefs.getBytes("rain_60m", saved_60m, sizeof(saved_60m));
+    prefs.end();
+
+    time_t now_t = time(nullptr);
+    struct tm timeinfo;
+    bool time_valid = (localtime_r(&now_t, &timeinfo) && timeinfo.tm_year > 120);
+
+    if (time_valid) {
+        int current_day_key = timeinfo.tm_mday;
+        if (rain_day_key != current_day_key && rain_day_key != -1) {
+            // Day changed while offline! Start a new day
+            day_start_tips = total_bucket_tips;
+            rain_day_key = current_day_key;
+            prefs.begin("weather", false);
+            prefs.putLong("day_start_tips", day_start_tips);
+            prefs.putInt("rain_day_key", rain_day_key);
+            prefs.end();
+        } else if (rain_day_key == -1) {
+            rain_day_key = current_day_key;
+            prefs.begin("weather", false);
+            prefs.putInt("rain_day_key", rain_day_key);
+            prefs.end();
+        }
+    }
+
+    if (total_bucket_tips >= day_start_tips) {
+        uint32_t persistent_day_tips = total_bucket_tips - day_start_tips;
+        rolling_rain_day = persistent_day_tips * rain_calibration;
+    } else {
+        day_start_tips = total_bucket_tips;
+        rolling_rain_day = 0.0f;
+    }
+
+    if (len == sizeof(saved_60m) && saved_time > 1577836800) {
+        if (time_valid && (uint32_t)now_t >= saved_time) {
+            uint32_t elapsed_sec = (uint32_t)now_t - saved_time;
+            uint32_t elapsed_min = elapsed_sec / 60;
+            if (elapsed_min < 60) {
+                for (uint32_t i = 0; i < (60 - elapsed_min); i++) {
+                    int target_idx = (current_minute_index - i - elapsed_min + HISTORY_MINUTES) % HISTORY_MINUTES;
+                    rain_history[target_idx] = saved_60m[59 - i];
+                }
+                recalculate_rolling_rain();
+                app_log("[Rain] Restored %u minutes of 1-hour rain history after reboot.", 60 - elapsed_min);
+            }
+        } else if (!time_valid) {
+            for (uint32_t i = 0; i < 60; i++) {
+                int target_idx = (current_minute_index - i + HISTORY_MINUTES) % HISTORY_MINUTES;
+                rain_history[target_idx] = saved_60m[59 - i];
+            }
+            recalculate_rolling_rain();
+            app_log("[Rain] Restored 60 minutes of rain history (pending NTP time sync).");
+        }
+    }
 }
 
 void load_settings() {
@@ -550,14 +649,14 @@ void load_settings() {
     // MQTT
     mqtt_publish_interval_s = prefs.getInt("mqtt_int", 15);
     mqtt_decimals           = prefs.getInt("mqtt_dec", 1);
+    prefs.end();
 
-    // Load saved tips count from flash
-    total_bucket_tips  = prefs.getLong("tips", 0);
-    last_processed_tips = total_bucket_tips;
-    total_rain_mm      = total_bucket_tips * rain_calibration;
+    // Restore rain persistence stats and 60-min history from flash
+    restore_rain_persistence();
 
     WiFi.hostname(hostname);
     
+    prefs.begin("weather", false);
     opt_in_crash_dump  = prefs.getBool("crash_opt", true);
     is_reboot_pending  = prefs.getBool("reboot_pending", false);
     if (is_reboot_pending) {
@@ -1179,10 +1278,8 @@ void loop() {
         // Recalculate rain totals immediately
         recalculate_rolling_rain();
 
-        // Persist tips count to flash
-        prefs.begin("weather", false);
-        prefs.putLong("tips", current_tips);
-        prefs.end();
+        // Persist rain data to flash
+        save_rain_persistence();
 
         app_log("[Rain] Tip detected! Incremented by %u, Total tips: %u, Total rain: %s mm", diff, current_tips, String(total_rain_mm, 2).c_str());
     }
@@ -1206,18 +1303,22 @@ void loop() {
             static int last_reset_day = -1;
             if (timeinfo.tm_mday != last_reset_day && timeinfo.tm_hour == gust_reset_hour && timeinfo.tm_min == 0) {
                 last_reset_day = timeinfo.tm_mday;
+                day_start_tips = total_bucket_tips;
+                rain_day_key = timeinfo.tm_mday;
                 reset_wind_gust();
                 reset_daily_temp_min_max();
             }
         } else {
             if (current_minute_index == 0) {
+                day_start_tips = total_bucket_tips;
                 reset_wind_gust();
                 reset_daily_temp_min_max();
             }
         }
 
-        // Recalculate rain statistics
+        // Recalculate rain statistics and save state to flash
         recalculate_rolling_rain();
+        save_rain_persistence();
         
         app_log("[System] Minute ticked. History index: %d | Hourly rain: %s mm | 24h rain: %s mm", 
                 current_minute_index, String(rolling_rain_hour, 2).c_str(), String(rolling_rain_day, 2).c_str());

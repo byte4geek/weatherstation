@@ -6,7 +6,7 @@
 #include <PubSubClient.h>
 
 // --- Firmware Version ---
-#define FIRMWARE_VERSION "1.0.5"
+#define FIRMWARE_VERSION "1.0.6"
 
 // --- RAIN DATA CONFIGURATION ---
 extern volatile uint32_t total_bucket_tips;
@@ -14,7 +14,12 @@ extern uint32_t last_processed_tips;
 extern float total_rain_mm;
 extern float rolling_rain_hour;
 extern float rolling_rain_day;
+extern uint32_t day_start_tips;
+extern int rain_day_key;
 extern bool is_raining;
+
+void save_rain_persistence();
+void restore_rain_persistence();
 
 // --- ENVIRONMENTAL SENSORS DATA ---
 extern bool has_aht20;
