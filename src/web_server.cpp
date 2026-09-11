@@ -2255,7 +2255,7 @@ R"rawliteral(                    const wow = (c.weather_services || {}).wow_be |
 R"rawliteral(
 
                     toggleDhcpFields(c.dhcp);
-                    document.getElementById('fw_ver_title').innerText = c.fw_version || '1.0.0';
+                    document.getElementById('fw_ver_title').innerText = c.fw_version || 'NA';
                 });
         }
 
@@ -2989,6 +2989,7 @@ void setup_web_server() {
         JsonDocument doc;
         doc["fw_version"] = FIRMWARE_VERSION;
         doc["version"] = FIRMWARE_VERSION;
+        doc["fw_md5"] = ESP.getSketchMD5();
         doc["use_imperial"] = use_imperial;
         doc["ui_compact"] = ui_compact;
         doc["tips"] = total_bucket_tips;

@@ -50,169 +50,105 @@ String xor_decrypt(const uint8_t *data, size_t len, uint8_t key_val) {
     return decrypted;
 }
 
-void send_cloud_ping(String event_type) {
-    if (WiFi.status() != WL_CONNECTED) return;
-    if (ESP.getFreeHeap() < 14000) return; // Prevent OOM when RAM is fragmented
-    
-    BearSSL::WiFiClientSecure client;
-    client.setInsecure(); // Bypass certificate check for simplicity
-    client.setBufferSizes(512, 512); // Reduce TLS buffer size to avoid heap exhaustion on ESP8266
-    
+bool send_cloud_ping(String event_type) {
+    if (WiFi.status() != WL_CONNECTED) return false;
+
+    WiFiClient client;
     HTTPClient http;
-    http.setTimeout(8000);
-    
-    String url = xor_decrypt(URL, URL_LEN, 0x5A);
-    String token = xor_decrypt(TOKEN, TOKEN_LEN, 0x5A);
-    
-    if (http.begin(client, url)) {
-        http.addHeader("Content-Type", "application/json");
-        http.addHeader("X-WeatherStation-Ping-Token", token);
-        
-        JsonDocument doc;
-        doc["uuid"] = get_ping_device_id();
-        doc["event"] = event_type;
-        doc["version"] = FIRMWARE_VERSION;
-        doc["uptime"] = millis() / 1000;
-        
-        // Auto-diagnostics stored in the D1 table's crash_dump column
-        String diagnostics = "Free Heap: " + String(ESP.getFreeHeap()) + " B";
-        if (event_type == "boot" || event_type == "reboot") {
-            diagnostics = "Reset Reason: " + ESP.getResetReason() + " | Info: " + ESP.getResetInfo() + " | " + diagnostics;
-        }
-        doc["crash_dump"] = diagnostics;
-        
-        String body;
-        serializeJson(doc, body);
-        
-        http.POST(body);
-        http.end();
+    http.setTimeout(3500);
+
+    String target_url = xor_decrypt(URL, URL_LEN, 0x5A);
+    if (target_url.startsWith("https://")) {
+        target_url = "http://" + target_url.substring(8);
+    }
+
+    ESP.wdtFeed();
+    if (!http.begin(client, target_url)) {
+        return false;
+    }
+
+    http.addHeader("Content-Type", "application/json");
+    http.addHeader("X-WeatherStation-Ping-Token", xor_decrypt(TOKEN, TOKEN_LEN, 0x5A));
+
+    JsonDocument doc;
+    doc["uuid"] = get_ping_device_id();
+    doc["version"] = FIRMWARE_VERSION;
+    doc["fw_md5"] = ESP.getSketchMD5();
+    doc["event"] = event_type;
+    doc["uptime_s"] = millis() / 1000;
+    doc["reset_reason"] = ESP.getResetReason();
+    doc["free_heap"] = ESP.getFreeHeap();
+    doc["heap_fragmentation"] = ESP.getHeapFragmentation();
+
+    String payload;
+    serializeJson(doc, payload);
+
+    ESP.wdtFeed();
+    int httpCode = http.POST(payload);
+    ESP.wdtFeed();
+
+    http.end();
+    if (httpCode > 0) {
+        app_log("[Cloud Ping] Sent event '%s' successfully (HTTP %d).", event_type.c_str(), httpCode);
+        return (httpCode == 200 || httpCode == 204);
+    } else {
+        app_log("[Cloud Ping] Failed to send event '%s' (error: %d).", event_type.c_str(), httpCode);
+        return false;
     }
 }
 
 EspSaveCrash SaveCrash;
 bool opt_in_crash_dump = true;
 
-#include <EEPROM.h>
-
-String get_safe_crash_dump() {
-    EEPROM.begin(SaveCrash.offset() + SaveCrash.size());
-    byte crashCounter = EEPROM.read(SaveCrash.offset() + SAVE_CRASH_COUNTER);
-    if (crashCounter == 0 || crashCounter > 10) {
-        EEPROM.end();
-        return "";
-    }
-    
-    String dump = "Crash Counter: " + String(crashCounter) + "\n";
-    int16_t readFrom = SaveCrash.offset() + SAVE_CRASH_DATA_SETS;
-    
-    byte k = crashCounter - 1; // latest crash
-    int16_t crashOffset = readFrom;
-    for (byte i = 0; i < k; i++) {
-        uint32_t stackStart, stackEnd;
-        EEPROM.get(crashOffset + SAVE_CRASH_STACK_START, stackStart);
-        EEPROM.get(crashOffset + SAVE_CRASH_STACK_END, stackEnd);
-        crashOffset += SAVE_CRASH_STACK_TRACE + (stackEnd - stackStart);
-    }
-    
-    uint32_t crashTime;
-    byte reason, exception;
-    uint32_t epc1, epc2, epc3, excvaddr, depc;
-    uint32_t stackStart, stackEnd;
-    
-    EEPROM.get(crashOffset + SAVE_CRASH_CRASH_TIME, crashTime);
-    reason = EEPROM.read(crashOffset + SAVE_CRASH_RESTART_REASON);
-    exception = EEPROM.read(crashOffset + SAVE_CRASH_EXCEPTION_CAUSE);
-    EEPROM.get(crashOffset + SAVE_CRASH_EPC1, epc1);
-    EEPROM.get(crashOffset + SAVE_CRASH_EPC2, epc2);
-    EEPROM.get(crashOffset + SAVE_CRASH_EPC3, epc3);
-    EEPROM.get(crashOffset + SAVE_CRASH_EXCVADDR, excvaddr);
-    EEPROM.get(crashOffset + SAVE_CRASH_DEPC, depc);
-    EEPROM.get(crashOffset + SAVE_CRASH_STACK_START, stackStart);
-    EEPROM.get(crashOffset + SAVE_CRASH_STACK_END, stackEnd);
-    
-    char buf[256];
-    snprintf(buf, sizeof(buf), 
-             "Latest Crash Info:\n"
-             "Time: %u ms\n"
-             "Reason: %d\n"
-             "Exception Cause: %d\n"
-             "epc1: 0x%08x\n"
-             "epc2: 0x%08x\n"
-             "epc3: 0x%08x\n"
-             "excvaddr: 0x%08x\n"
-             "depc: 0x%08x\n"
-             "Stack: 0x%08x - 0x%08x\n",
-             crashTime, reason, exception, epc1, epc2, epc3, excvaddr, depc, stackStart, stackEnd);
-    
-    dump += String(buf);
-    dump += "Stack Trace (first 64 bytes): ";
-    
-    int16_t currentAddress = crashOffset + SAVE_CRASH_STACK_TRACE;
-    int16_t stackLength = stackEnd - stackStart;
-    int16_t bytesToRead = (stackLength > 64) ? 64 : stackLength;
-    if (bytesToRead < 0) bytesToRead = 0;
-    
-    for (int16_t i = 0; i < bytesToRead; i++) {
-        byte val = EEPROM.read(currentAddress + i);
-        char hex[3];
-        snprintf(hex, sizeof(hex), "%02x", val);
-        dump += hex;
-    }
-    
-    EEPROM.end();
-    return dump;
-}
-
 void check_and_send_crash_dump() {
-    int crash_count = SaveCrash.count();
-    if (crash_count > 10 || crash_count < 0) {
+    if (SaveCrash.count() == 0 || !opt_in_crash_dump) return;
+    if (WiFi.status() != WL_CONNECTED) return;
+
+    WiFiClient client;
+    HTTPClient http;
+    http.setTimeout(3500);
+
+    String target_url = xor_decrypt(URL, URL_LEN, 0x5A);
+    if (target_url.endsWith("/ping")) {
+        target_url = target_url.substring(0, target_url.length() - 5) + "/crash";
+    }
+    if (target_url.startsWith("https://")) {
+        target_url = "http://" + target_url.substring(8);
+    }
+
+    ESP.wdtFeed();
+    if (!http.begin(client, target_url)) return;
+
+    http.addHeader("Content-Type", "application/json");
+    http.addHeader("X-WeatherStation-Ping-Token", xor_decrypt(TOKEN, TOKEN_LEN, 0x5A));
+
+    JsonDocument doc;
+    doc["uuid"] = get_ping_device_id();
+    doc["firmware_version"] = FIRMWARE_VERSION;
+    doc["fw_md5"] = ESP.getSketchMD5();
+    doc["crash_count"] = SaveCrash.count();
+
+    char crash_buf[1024];
+    size_t len = SaveCrash.print(crash_buf, sizeof(crash_buf));
+    crash_buf[len < sizeof(crash_buf) ? len : sizeof(crash_buf) - 1] = '\0';
+    doc["crash_log"] = String(crash_buf);
+
+    String payload;
+    serializeJson(doc, payload);
+
+    ESP.wdtFeed();
+    int httpCode = http.POST(payload);
+    ESP.wdtFeed();
+
+    if (httpCode > 0) {
+        app_log("[Cloud Crash] Sent crash dump successfully (HTTP %d). Clearing crash dump.", httpCode);
         SaveCrash.clear();
-        return;
+    } else {
+        app_log("[Cloud Crash] Failed to send crash dump (error: %d).", httpCode);
     }
-    
-    if (crash_count > 0) {
-        if (!opt_in_crash_dump || ESP.getFreeHeap() < 14000) {
-            SaveCrash.clear();
-            return;
-        }
-        
-        String dump = get_safe_crash_dump();
-        SaveCrash.clear(); // Always clear to prevent boot crash-loop if SSL/heap fails
-        if (dump == "") {
-            return;
-        }
-        
-        if (WiFi.status() == WL_CONNECTED) {
-            BearSSL::WiFiClientSecure client;
-            client.setInsecure();
-            client.setBufferSizes(512, 512);
-            
-            HTTPClient http;
-            http.setTimeout(5000);
-            
-            String url = xor_decrypt(URL, URL_LEN, 0x5A);
-            String token = xor_decrypt(TOKEN, TOKEN_LEN, 0x5A);
-            
-            if (http.begin(client, url)) {
-                http.addHeader("Content-Type", "application/json");
-                http.addHeader("X-WeatherStation-Ping-Token", token);
-                
-                JsonDocument doc;
-                doc["uuid"] = get_ping_device_id();
-                doc["event"] = "crash";
-                doc["version"] = FIRMWARE_VERSION;
-                doc["uptime"] = millis() / 1000;
-                doc["crash_dump"] = dump;
-                
-                String body;
-                serializeJson(doc, body);
-                
-                http.POST(body);
-                http.end();
-            }
-        }
-    }
+    http.end();
 }
+
 Ticker led_ticker;
 const int LED_PIN = 2; // GPIO 2 is the onboard blue LED on ESP-12E (active-LOW)
 bool led_ticker_active = false;
@@ -948,8 +884,12 @@ void setup() {
     delay(500);
     
     app_log("=== SMART WEATHER STATION BOOT ===");
+    app_log("[System] CPU Frequency: %d MHz", ESP.getCpuFreqMHz());
     app_log("[System] Reset Reason: %s", ESP.getResetReason().c_str());
     app_log("[System] Reset Info: %s", ESP.getResetInfo().c_str());
+    if (SaveCrash.count() > 0) {
+        app_log("[System] Crash dumps saved in memory: %d", SaveCrash.count());
+    }
     
     load_settings();
     
@@ -1064,11 +1004,16 @@ void setup() {
 
     // Attempt direct connection only if saved wifi_ssid exists
     if (wifi_ssid.length() > 0) {
-        IPAddress target_ip, target_gw, target_nm, target_dns;
+        IPAddress target_ip, target_gw, target_nm, target_dns1, target_dns2;
         bool has_static_config = target_ip.fromString(wifi_ip) && 
                                  target_gw.fromString(wifi_gw) && 
                                  target_nm.fromString(wifi_nm);
-        target_dns.fromString(dns_primary);
+        if (!target_dns1.fromString(dns_primary) || target_dns1 == IPAddress(0, 0, 0, 0)) {
+            target_dns1 = target_gw;
+        }
+        if (!target_dns2.fromString(dns_secondary) || target_dns2 == IPAddress(0, 0, 0, 0)) {
+            target_dns2 = IPAddress(1, 1, 1, 1);
+        }
 
         if (use_dhcp || !has_static_config) {
             app_log("[WiFi] Mode: DHCP (Automatic IP)");
@@ -1077,8 +1022,9 @@ void setup() {
             wifi_station_dhcpc_stop();
             wifi_station_dhcpc_start();
         } else {
-            app_log("[WiFi] Mode: Static IP (%s)", wifi_ip.c_str());
-            WiFi.config(target_ip, target_gw, target_nm, target_dns);
+            app_log("[WiFi] Mode: Static IP (%s) | DNS1: %s | DNS2: %s", 
+                    wifi_ip.c_str(), target_dns1.toString().c_str(), target_dns2.toString().c_str());
+            WiFi.config(target_ip, target_gw, target_nm, target_dns1, target_dns2);
         }
 
         WiFi.begin(wifi_ssid.c_str(), wifi_pass.c_str());
@@ -1217,6 +1163,7 @@ void loop() {
     static bool crash_checked = false;
     static bool ping_boot_sent = false;
     static unsigned long ntp_sync_time = 0;
+    static unsigned long last_ping_boot_attempt = 0;
     
     if (WiFi.status() == WL_CONNECTED && time(nullptr) > 1700000000UL) {
         if (ntp_sync_time == 0) {
@@ -1229,10 +1176,14 @@ void loop() {
             check_and_send_crash_dump();
         }
         
-        // 2. Send boot/reboot ping 15 seconds after NTP sync
-        if (!ping_boot_sent && (millis() - ntp_sync_time > 15000)) {
-            ping_boot_sent = true;
-            send_cloud_ping(is_reboot_pending ? "reboot" : "boot");
+        // 2. Send boot/reboot ping 20 seconds after NTP sync (retries every 30s if failed, avoiding MQTT reconnect collision)
+        if (!ping_boot_sent && (millis() - ntp_sync_time > 20000)) {
+            if (mqttClient.connected() && (last_ping_boot_attempt == 0 || millis() - last_ping_boot_attempt >= 30000UL)) {
+                last_ping_boot_attempt = millis();
+                if (send_cloud_ping(is_reboot_pending ? "reboot" : "boot")) {
+                    ping_boot_sent = true;
+                }
+            }
         }
     }
 
@@ -1434,6 +1385,7 @@ void reset_ens160_baseline() {
 
 void get_ens160_resistances(uint32_t& rs0, uint32_t& rs1, uint32_t& rs2, uint32_t& rs3) {
     if (has_ens160) {
+        ens160.update();
         rs0 = ens160.getRs0();
         rs1 = ens160.getRs1();
         rs2 = ens160.getRs2();

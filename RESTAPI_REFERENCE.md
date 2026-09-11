@@ -47,6 +47,9 @@ Returns all current sensor readings, rain totals, wind speed metrics (multi-unit
 #### Sample Response (`200 OK`)
 ```json
 {
+  "fw_version": "1.0.7",
+  "version": "1.0.7",
+  "fw_md5": "a1b2c3d4e5f67890a1b2c3d4e5f67890",
   "use_imperial": false,
   "ui_compact": false,
   "tips": 12,

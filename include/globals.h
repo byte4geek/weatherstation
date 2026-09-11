@@ -6,7 +6,7 @@
 #include <PubSubClient.h>
 
 // --- Firmware Version ---
-#define FIRMWARE_VERSION "1.0.6"
+#define FIRMWARE_VERSION "1.0.7"
 
 // --- RAIN DATA CONFIGURATION ---
 extern volatile uint32_t total_bucket_tips;
@@ -138,7 +138,7 @@ void led_blink_mqtt();
 // --- Reboot & Ping ---
 void request_reboot();
 String get_ping_device_id();
-void send_cloud_ping(String event_type);
+bool send_cloud_ping(String event_type);
 
 // --- Crash Diagnostics ---
 extern bool opt_in_crash_dump;
