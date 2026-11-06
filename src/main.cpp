@@ -3,15 +3,29 @@
 #include "weather_services.h"
 #include <Ticker.h>
 
+#if !defined(ESP32)
 #include <EspSaveCrash.h>
+#endif
 
 
+#if defined(ESP32)
+#include <HTTPClient.h>
+#else
 #include <ESP8266HTTPClient.h>
+#endif
 #include <WiFiClientSecure.h>
 #include <ArduinoJson.h>
+#if defined(ESP32) && !defined(LED_BUILTIN)
+#define LED_BUILTIN 2
+#endif
+#if defined(ESP32)
+#include <esp_system.h>
+#include <esp_mac.h>
+#else
 extern "C" {
   #include "user_interface.h"
 }
+#endif
 
 bool is_reboot_pending = false;
 
@@ -28,7 +42,11 @@ String get_ping_device_id() {
     String id = prefs.getString("device_id", "");
     if (id == "") {
         // Generate a random ID: ws_ followed by two 32-bit random hex values
+        #if defined(ESP32)
+        id = "ws_" + String(esp_random(), HEX) + String(esp_random(), HEX);
+#else
         id = "ws_" + String(os_random(), HEX) + String(os_random(), HEX);
+#endif
         prefs.putString("device_id", id);
 
     }
@@ -62,7 +80,9 @@ bool send_cloud_ping(String event_type) {
         target_url = "http://" + target_url.substring(8);
     }
 
+    #if !defined(ESP32)
     ESP.wdtFeed();
+#endif
     if (!http.begin(client, target_url)) {
         return false;
     }
@@ -73,19 +93,23 @@ bool send_cloud_ping(String event_type) {
     JsonDocument doc;
     doc["uuid"] = get_ping_device_id();
     doc["version"] = FIRMWARE_VERSION;
-    doc["fw_md5"] = ESP.getSketchMD5();
+    doc["fw_md5"] = weather_firmware_md5();
     doc["event"] = event_type;
     doc["uptime_s"] = millis() / 1000;
-    doc["reset_reason"] = ESP.getResetReason();
+    doc["reset_reason"] = weather_reset_reason();
     doc["free_heap"] = ESP.getFreeHeap();
-    doc["heap_fragmentation"] = ESP.getHeapFragmentation();
+    doc["heap_fragmentation"] = weather_heap_fragmentation();
 
     String payload;
     serializeJson(doc, payload);
 
+    #if !defined(ESP32)
     ESP.wdtFeed();
+#endif
     int httpCode = http.POST(payload);
+    #if !defined(ESP32)
     ESP.wdtFeed();
+#endif
 
     http.end();
     if (httpCode > 0) {
@@ -97,10 +121,13 @@ bool send_cloud_ping(String event_type) {
     }
 }
 
+#if !defined(ESP32)
 EspSaveCrash SaveCrash;
+#endif
 bool opt_in_crash_dump = true;
 
 void check_and_send_crash_dump() {
+#if !defined(ESP32)
     if (SaveCrash.count() == 0 || !opt_in_crash_dump) return;
     if (WiFi.status() != WL_CONNECTED) return;
 
@@ -116,7 +143,9 @@ void check_and_send_crash_dump() {
         target_url = "http://" + target_url.substring(8);
     }
 
+    #if !defined(ESP32)
     ESP.wdtFeed();
+#endif
     if (!http.begin(client, target_url)) return;
 
     http.addHeader("Content-Type", "application/json");
@@ -125,7 +154,7 @@ void check_and_send_crash_dump() {
     JsonDocument doc;
     doc["uuid"] = get_ping_device_id();
     doc["firmware_version"] = FIRMWARE_VERSION;
-    doc["fw_md5"] = ESP.getSketchMD5();
+    doc["fw_md5"] = weather_firmware_md5();
     doc["crash_count"] = SaveCrash.count();
 
     char crash_buf[1024];
@@ -136,9 +165,13 @@ void check_and_send_crash_dump() {
     String payload;
     serializeJson(doc, payload);
 
+    #if !defined(ESP32)
     ESP.wdtFeed();
+#endif
     int httpCode = http.POST(payload);
+    #if !defined(ESP32)
     ESP.wdtFeed();
+#endif
 
     if (httpCode > 0) {
         app_log("[Cloud Crash] Sent crash dump successfully (HTTP %d). Clearing crash dump.", httpCode);
@@ -147,6 +180,7 @@ void check_and_send_crash_dump() {
         app_log("[Cloud Crash] Failed to send crash dump (error: %d).", httpCode);
     }
     http.end();
+#endif
 }
 
 Ticker led_ticker;
@@ -194,9 +228,11 @@ void led_blink_mqtt() {
 #include <Adafruit_BMP280.h>
 #include <ScioSense_ENS16x.h>
 
+#if !defined(ESP32)
 static WiFiEventHandler onStationConnectedHandler;
 static WiFiEventHandler onStationDisconnectedHandler;
 static WiFiEventHandler onStationGotIPHandler;
+#endif
 
 const char* get_wifi_disconnection_reason_str(uint8_t reason) {
     switch(reason) {
@@ -216,7 +252,7 @@ const char* get_wifi_disconnection_reason_str(uint8_t reason) {
         case 19: return "PAIRWISE_CIPHER_INVALID (WPA3 / PMF incompatible mode)";
         case 24: return "CIPHER_SUITE_REJECTED";
         case 200: return "BEACON_TIMEOUT (Signal weak or AP on 5GHz/different channel)";
-        case 201: return "NO_AP_FOUND (SSID not found - ESP8266 only supports 2.4GHz!)";
+        case 201: return "NO_AP_FOUND (SSID not found - ESP32 only supports 2.4GHz!)";
         case 202: return "AUTH_FAIL";
         case 203: return "ASSOC_FAIL";
         case 204: return "HANDSHAKE_TIMEOUT";
@@ -224,7 +260,9 @@ const char* get_wifi_disconnection_reason_str(uint8_t reason) {
     }
 }
 
+#if !defined(ESP32)
 ADC_MODE(ADC_VCC);
+#endif
 
 // --- Global variables definition ---
 volatile uint32_t total_bucket_tips = 0;
@@ -590,7 +628,7 @@ void load_settings() {
     // Restore rain persistence stats and 60-min history from flash
     restore_rain_persistence();
 
-    WiFi.hostname(hostname);
+    weather_set_hostname(hostname);
     
     prefs.begin("weather", false);
     opt_in_crash_dump  = prefs.getBool("crash_opt", true);
@@ -884,12 +922,14 @@ void setup() {
     delay(500);
     
     app_log("=== SMART WEATHER STATION BOOT ===");
-    app_log("[System] CPU Frequency: %d MHz", ESP.getCpuFreqMHz());
-    app_log("[System] Reset Reason: %s", ESP.getResetReason().c_str());
-    app_log("[System] Reset Info: %s", ESP.getResetInfo().c_str());
+    app_log("[System] CPU Frequency: %d MHz", weather_cpu_frequency_mhz());
+    app_log("[System] Reset Reason: %s", weather_reset_reason().c_str());
+    app_log("[System] Reset Info: %s", weather_reset_info().c_str());
+#if !defined(ESP32)
     if (SaveCrash.count() > 0) {
         app_log("[System] Crash dumps saved in memory: %d", SaveCrash.count());
     }
+#endif
     
     load_settings();
     
@@ -968,9 +1008,10 @@ void setup() {
 
     // Configure WiFi radio settings for maximum reliability during association
     WiFi.persistent(true);
-    WiFi.setSleepMode(WIFI_NONE_SLEEP); // Disable modem sleep to avoid dropped 4-way handshake packets
+    weather_disable_wifi_sleep(); // Disable modem sleep to avoid dropped 4-way handshake packets
 
     // Register WiFi event handlers for precise SDK diagnostic logs
+    #if !defined(ESP32)
     onStationConnectedHandler = WiFi.onStationModeConnected([](const WiFiEventStationModeConnected& evt) {
         app_log("[WiFi EVENT] Associated with SSID: '%s' | BSSID: %02X:%02X:%02X:%02X:%02X:%02X | Channel: %d",
                 evt.ssid.c_str(),
@@ -993,12 +1034,15 @@ void setup() {
                 evt.gw.toString().c_str());
     });
 
+    #endif
     // Ensure hostname is set in SDK before station mode initialization
+#if !defined(ESP32)
     wifi_station_set_hostname(hostname.c_str());
-    WiFi.hostname(hostname);
+#endif
+    weather_set_hostname(hostname);
     WiFi.persistent(true);
     WiFi.mode(WIFI_STA);
-    WiFi.setSleepMode(WIFI_NONE_SLEEP); // Essential for FRITZ!Box 4-way handshake
+    weather_disable_wifi_sleep(); // Essential for FRITZ!Box 4-way handshake
 
     bool direct_connected = false;
 
@@ -1019,8 +1063,10 @@ void setup() {
             app_log("[WiFi] Mode: DHCP (Automatic IP)");
             WiFi.disconnect(true);
             delay(100);
+#if !defined(ESP32)
             wifi_station_dhcpc_stop();
             wifi_station_dhcpc_start();
+#endif
         } else {
             app_log("[WiFi] Mode: Static IP (%s) | DNS1: %s | DNS2: %s", 
                     wifi_ip.c_str(), target_dns1.toString().c_str(), target_dns2.toString().c_str());

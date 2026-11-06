@@ -1,8 +1,13 @@
 // File: include/globals.h
 #pragma once
 #include <Arduino.h>
+#if defined(ESP32)
+#include <WiFi.h>
+#else
 #include <ESP8266WiFi.h>
+#endif
 #include <Preferences.h>
+#include "esp_compat.h"
 #include <PubSubClient.h>
 
 // --- Firmware Version ---

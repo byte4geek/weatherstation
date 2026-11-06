@@ -1,6 +1,10 @@
 #include "cwop_uploader.h"
 
+#if defined(ESP32)
+#include <WiFi.h>
+#else
 #include <ESP8266WiFi.h>
+#endif
 
 #include "cwop_formatter.h"
 #include "globals.h"

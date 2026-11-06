@@ -4,12 +4,21 @@
 #include "mqtt_manager.h"
 #include "weather_services.h"
 #include "weather_observation.h"
+#if defined(ESP32)
+#include <WebServer.h>
+#include <Update.h>
+#else
 #include <ESP8266WebServer.h>
-#include <ArduinoJson.h>
 #include <Updater.h>
+#endif
+#include <ArduinoJson.h>
 #include <Wire.h>
 
+#if defined(ESP32)
+WebServer server(80);
+#else
 ESP8266WebServer server(80);
+#endif
 
 const char index_html[] PROGMEM = R"rawliteral(
 <!DOCTYPE html>
@@ -638,7 +647,7 @@ const char index_html[] PROGMEM = R"rawliteral(
     <div class="container">
         <header>
             <h1>DIY Smart Weather Station 2026</h1>
-            <p>ESP8266 Weather Monitor &bull; v<span id="fw_ver_title">--</span></p>
+            <p>ESP32 Weather Monitor &bull; v<span id="fw_ver_title">--</span></p>
         </header>
 
         <nav class="nav-tabs">
@@ -1474,7 +1483,7 @@ R"rawliteral(
             <div class="panel" style="border-color: rgba(239, 68, 68, 0.3);">
                 <div class="panel-section">
                     <h3 style="color: var(--danger);"><i class="mdi mdi-alert-circle-outline" style="color: var(--danger); margin-right: 6px;"></i> Factory Reset</h3>
-                    <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 15px;">Reset all saved configurations (Wi-Fi, MQTT, and calibration) and restart the ESP8266.</p>
+                    <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 15px;">Reset all saved configurations (Wi-Fi, MQTT, and calibration) and restart the ESP32.</p>
                     <button class="btn btn-danger" onclick="factoryReset()"><i class="mdi mdi-alert"></i> Reset Device</button>
                 </div>
             </div>
@@ -1493,7 +1502,7 @@ R"rawliteral(
                             <tr style="border-bottom: 2px solid var(--card-border); font-weight: bold; color: var(--primary);">
                                 <th style="text-align: left; padding: 12px 8px;">Sensor / Function</th>
                                 <th style="text-align: left; padding: 12px 8px;">NodeMCU Pin</th>
-                                <th style="text-align: left; padding: 12px 8px;">ESP8266 GPIO</th>
+                                <th style="text-align: left; padding: 12px 8px;">ESP32 GPIO</th>
                                 <th style="text-align: left; padding: 12px 8px;">Description</th>
                             </tr>
                         </thead>
@@ -1598,7 +1607,7 @@ R"rawliteral(
                                 <span style="font-family: monospace; font-weight: bold; font-size: 1rem; color: var(--primary);">POST /api/reboot</span>
                                 <span style="background: rgba(239, 68, 68, 0.15); color: var(--danger); font-size: 0.8rem; font-weight: 600; padding: 3px 8px; border-radius: 4px; border: 1px solid rgba(239, 68, 68, 0.3);">Reboot Device</span>
                             </div>
-                            <p style="color: var(--text-muted); font-size: 0.85rem;">Triggers a soft restart of the ESP8266 weather station.</p>
+                            <p style="color: var(--text-muted); font-size: 0.85rem;">Triggers a soft restart of the ESP32 weather station.</p>
                         </div>
                     </div>
                 </div>
@@ -2709,7 +2718,7 @@ R"rawliteral(
             if (confirm("WARNING: This action will reset ALL settings and Wi-Fi credentials. Do you want to proceed?")) {
                 fetch('/api/factory_reset', { method: 'POST' })
                     .then(res => {
-                        alert("Device reset! The ESP8266 will restart in Access Point mode for configuration.");
+                        alert("Device reset! The ESP32 will restart in Access Point mode for configuration.");
                         setTimeout(() => window.location.reload(), 2000);
                     });
             }
@@ -2989,7 +2998,7 @@ void setup_web_server() {
         JsonDocument doc;
         doc["fw_version"] = FIRMWARE_VERSION;
         doc["version"] = FIRMWARE_VERSION;
-        doc["fw_md5"] = ESP.getSketchMD5();
+        doc["fw_md5"] = weather_firmware_md5();
         doc["use_imperial"] = use_imperial;
         doc["ui_compact"] = ui_compact;
         doc["tips"] = total_bucket_tips;
@@ -3089,7 +3098,7 @@ void setup_web_server() {
         doc["time"] = get_formatted_time();
         doc["rssi"] = String(WiFi.RSSI()) + " dBm";
         doc["ip"] = WiFi.localIP().toString();
-        doc["vcc"] = ESP.getVcc() / 1000.0f;
+        doc["vcc"] = weather_supply_voltage();
         doc["heap"] = ESP.getFreeHeap();
 
         String res; serializeJson(doc, res);
@@ -3596,7 +3605,7 @@ void setup_web_server() {
         HTTPUpload& upload = server.upload();
         if (upload.status == UPLOAD_FILE_START) {
             app_log("OTA update started: %s", upload.filename.c_str());
-            if (!Update.begin(ESP.getFreeSketchSpace())) {
+            if (!Update.begin(UPDATE_SIZE_UNKNOWN)) {
                 Update.printError(Serial);
             }
         } else if (upload.status == UPLOAD_FILE_WRITE) {

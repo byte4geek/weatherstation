@@ -142,7 +142,7 @@ bool connect_mqtt() {
 
     app_log("Attempting to connect to MQTT broker %s:%d...", mqtt_host.c_str(), mqtt_port);
     
-    String clientId = hostname + "_" + String(ESP.getChipId(), HEX);
+    String clientId = hostname + "_" + weather_chip_id();
     
     bool connected = false;
     if (mqtt_user.length() > 0) {
