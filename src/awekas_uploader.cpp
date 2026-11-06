@@ -1,8 +1,20 @@
 #include "awekas_uploader.h"
 
+#if defined(ESP32)
+#include <HTTPClient.h>
+#else
 #include <ESP8266HTTPClient.h>
+#endif
+#if defined(ESP32)
+#include <WiFi.h>
+#else
 #include <ESP8266WiFi.h>
+#endif
+#if defined(ESP32)
+#include <MD5Builder.h>
+#else
 #include <Hash.h>
+#endif
 
 #include "awekas_formatter.h"
 #include "globals.h"

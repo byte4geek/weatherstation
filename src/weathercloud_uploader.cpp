@@ -1,7 +1,15 @@
 #include "weathercloud_uploader.h"
 
+#if defined(ESP32)
+#include <HTTPClient.h>
+#else
 #include <ESP8266HTTPClient.h>
+#endif
+#if defined(ESP32)
+#include <WiFiClientSecure.h>
+#else
 #include <WiFiClientSecureBearSSL.h>
+#endif
 
 #include "globals.h"
 #include "weathercloud_formatter.h"
@@ -22,9 +30,15 @@ WeathercloudUploadResult upload_weathercloud_observation(
         return result;
     }
 
+    #if defined(ESP32)
+    WiFiClientSecure client;
+#else
     BearSSL::WiFiClientSecure client;
+#endif
     client.setInsecure();
-    client.setBufferSizes(1024, 512);
+    #if !defined(ESP32)
+        client.setBufferSizes(1024, 512);
+#endif
     client.setTimeout(5000);
     HTTPClient http;
     http.setTimeout(5000);

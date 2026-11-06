@@ -1,7 +1,15 @@
 #include "wu_uploader.h"
 
+#if defined(ESP32)
+#include <HTTPClient.h>
+#else
 #include <ESP8266HTTPClient.h>
+#endif
+#if defined(ESP32)
+#include <WiFiClientSecure.h>
+#else
 #include <WiFiClientSecureBearSSL.h>
+#endif
 
 #include "globals.h"
 
@@ -95,9 +103,15 @@ WuUploadResult upload_wu_observation(const char* service_name,
     http.setUserAgent(String("byte4geek-weatherstation/") + FIRMWARE_VERSION);
 
     if (url.startsWith("https://")) {
-        BearSSL::WiFiClientSecure client;
+        #if defined(ESP32)
+    WiFiClientSecure client;
+#else
+    BearSSL::WiFiClientSecure client;
+#endif
         client.setInsecure();
+        #if !defined(ESP32)
         client.setBufferSizes(1024, 512);
+#endif
         client.setTimeout(5000);
         if (!http.begin(client, url)) {
             result.message = "unable to initialize HTTPS client";

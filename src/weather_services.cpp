@@ -1,7 +1,11 @@
 #include "weather_services.h"
 
 #if WEATHER_UPLOAD_ANY
+#if defined(ESP32)
+#include <WiFi.h>
+#else
 #include <ESP8266WiFi.h>
+#endif
 #include <math.h>
 #include <time.h>
 
