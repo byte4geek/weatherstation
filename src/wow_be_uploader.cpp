@@ -1,13 +1,11 @@
 #include "wow_be_uploader.h"
 
+// Platform-specific HTTP and TLS client headers (ESP32 mbedTLS vs ESP8266 BearSSL)
 #if defined(ESP32)
 #include <HTTPClient.h>
-#else
-#include <ESP8266HTTPClient.h>
-#endif
-#if defined(ESP32)
 #include <WiFiClientSecure.h>
 #else
+#include <ESP8266HTTPClient.h>
 #include <WiFiClientSecureBearSSL.h>
 #endif
 
@@ -24,14 +22,15 @@ WowBeUploadResult upload_wow_be_observation(const String& site_id,
         result.message = "unable to format observation";
         return result;
     }
-    #if defined(ESP32)
+#if defined(ESP32)
     WiFiClientSecure client;
 #else
     BearSSL::WiFiClientSecure client;
 #endif
     client.setInsecure();
-    #if !defined(ESP32)
-        client.setBufferSizes(1024, 512);
+#if !defined(ESP32)
+    // Reduce BearSSL RX/TX buffer sizes on ESP8266 to prevent heap exhaustion
+    client.setBufferSizes(1024, 512);
 #endif
     client.setTimeout(5000);
     HTTPClient http;

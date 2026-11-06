@@ -1,6 +1,6 @@
-# DIY Smart Weather Station (v1.0.7)
+# DIY Smart Weather Station (v1.0.8)
 
-A feature-rich, high-precision ESP8266-based Smart Weather Station with a modern responsive Web Dashboard, single-board mobile Compact UI, Timezone & Daylight Saving Time (DST) configuration, Material Design Icons (MDI), dynamic sensor detection, customizable moving-average filters, Metric & Imperial unit system support, Home Assistant MQTT Auto-Discovery, full backup/restore capability, and hardware factory reset logic.
+A feature-rich, high-precision cross-platform (**ESP8266 & ESP32**) Smart Weather Station with a modern responsive Web Dashboard, single-board mobile Compact UI, Timezone & Daylight Saving Time (DST) configuration, Material Design Icons (MDI), dynamic sensor detection, customizable moving-average filters, Metric & Imperial unit system support, Home Assistant MQTT Auto-Discovery, full backup/restore capability, resilient Wi-Fi mesh roaming, and hardware factory reset logic.
 ---
 
 > [!NOTE]
@@ -58,9 +58,16 @@ A feature-rich, high-precision ESP8266-based Smart Weather Station with a modern
   - Glassmorphism dark UI built with HTML5/CSS3/JavaScript (no external dependencies).
   - Tasmota-style live **Debug Console** with interactive command input.
   - Mobile-friendly IP input fields (`inputmode="decimal"`) for easy smartphone setup.
+- **Cross-Platform Architecture (ESP8266 & ESP32)**:
+  - Unified codebase supporting both **ESP8266 (NodeMCU v2/v3, ESP-12E)** and **ESP32 (ESP32-WROOM-32, DevKitC, NodeMCU-32S)**.
+  - Hardware abstraction layer (`esp_compat.h`) handling IRAM-safe interrupt routines (`esp_timer_get_time()`), CPU frequency detection, reset reasons, and hardware-specific LED polarity.
+  - Dual 1.9MB OTA partition table (`min_spiffs.csv`) on ESP32 enabling smooth browser-based firmware updates.
+- **Mesh & Auto-Channel Wi-Fi Resilience**:
+  - Full-channel scanning (`WIFI_ALL_CHANNEL_SCAN`) and signal-based AP selection (`WIFI_CONNECT_AP_BY_SIGNAL`) ensuring seamless roaming and preventing `BEACON_TIMEOUT` drops when mesh nodes or routers hop across channels 1, 6, and 11.
+  - Non-blocking Wi-Fi auto-reconnect watchdog monitoring connection health in real time.
 - **Network & WiFi Manager**:
   - Captive Portal AP (`WeatherStation_Setup`) for initial setup.
-  - Full DHCP & Static IP configuration support (optimized for FRITZ!Box Mesh networks).
+  - Full DHCP & Static IP configuration support (optimized for FRITZ!Box, Asus AiMesh, and UniFi networks).
   - Soft-restart clean boot sequence ensuring stable network stack binding.
 - **Home Assistant Integration**:
   - Native MQTT Auto-Discovery (`homeassistant/sensor/...`).
@@ -107,7 +114,7 @@ Below is the list of hardware components required for this build, along with ref
 
 | Component | Function / Measurement | Interface | Address / Default Pin | Purchase Link |
 |---|---|---|---|---|
-| **ESP8266 NodeMCU v3** (or ESP-12E) | Main Microcontroller | — | — | [🛒 Buy on AliExpress](https://www.byte4geek.com/go/esp8266/) |
+| **ESP8266 NodeMCU v2/v3** or **ESP32-WROOM-32** | Main Microcontroller (ESP8266 or ESP32) | — | — | [🛒 Buy on AliExpress](https://www.byte4geek.com/go/esp8266/) |
 | **AHT20 + BMP280 Module** | Temp, Humidity & Pressure | I2C | `0x38` / `0x76` | [🛒 Buy on AliExpress](https://www.byte4geek.com/go/aht20bmp280/) |
 | **ENS160 Sensor** | Air Quality (TVOC, eCO2, AQI) | I2C | `0x53` or `0x52` | [🛒 Buy on AliExpress](https://www.byte4geek.com/go/ens160/) |
 | **AS5600 Magnetic Encoder** | Contactless Wind Direction Vane | I2C | `0x36` | [🛒 Buy on AliExpress](https://www.byte4geek.com/go/as5600/) |
@@ -166,29 +173,29 @@ To ensure the anemometer (wind speed) and wind vane (wind direction) turn freely
   <i>Click on the diagram image to view the full high-resolution schematic</i>
 </p>
 
-Below is the recommended pin mapping for the ESP8266 NodeMCU board:
+Below is the recommended pin mapping for both **ESP8266 NodeMCU** and **ESP32-WROOM-32** boards:
 
 ```
-                  ┌──────────────────────┐
-                  │   ESP8266 NodeMCU    │
-                  ├──────────────────────┤
-        (SDA)  D2 ┤ GPIO 4        GPIO 5 ├ D1  (SCL)
-    (Rain ISR) D5 ┤ GPIO 14       GPIO 0 ├ D3  (FLASH Button - Factory Reset)
-    (Wind ISR) D6 ┤ GPIO 12       GPIO 2 ├ D4  (Status LED)
-                  └──────────────────────┘
+        ┌──────────────────────┐                 ┌──────────────────────┐
+        │   ESP8266 NodeMCU    │                 │   ESP32-WROOM-32     │
+        ├──────────────────────┤                 ├──────────────────────┤
+(SDA)   │ GPIO 4 (D2)   GPIO 5 │ (SCL - D1)      │ GPIO 4        GPIO 5 │ (SCL)
+(Rain)  │ GPIO 14 (D5)  GPIO 0 │ (FLASH - D3)    │ GPIO 14       GPIO 0 │ (FLASH Button)
+(Wind)  │ GPIO 12 (D6)  GPIO 2 │ (LED - D4)      │ GPIO 12       GPIO 2 │ (Onboard LED)
+        └──────────────────────┘                 └──────────────────────┘
 ```
 
 ### I2C Bus Connection (Shared SDA / SCL Pins)
 
-Connect the **SDA** and **SCL** pins of all I2C sensors in parallel to the ESP8266:
+Connect the **SDA** and **SCL** pins of all I2C sensors in parallel to your microcontroller:
 
-| Sensor | Sensor VCC | Sensor GND | SDA Pin | SCL Pin | Notes |
-|---|---|---|---|---|---|
-| **AHT20 / AHT21** | 3.3V | GND | GPIO 4 (D2) | GPIO 5 (D1) | Address `0x38` |
-| **BMP280** | 3.3V | GND | GPIO 4 (D2) | GPIO 5 (D1) | Address `0x76` or `0x77` |
-| **ENS160** | 3.3V | GND | GPIO 4 (D2) | GPIO 5 (D1) | Address `0x53` or `0x52` |
-| **AS5600** | 3.3V | GND | GPIO 4 (D2) | GPIO 5 (D1) | Address `0x36` |
-| **BH1750** | 3.3V | GND | GPIO 4 (D2) | GPIO 5 (D1) | Address `0x23` |
+| Sensor | Sensor VCC | Sensor GND | ESP8266 Pin | ESP32 GPIO | I2C Address | Notes |
+|---|---|---|---|---|---|---|
+| **AHT20 / AHT21** | 3.3V | GND | GPIO 4 (D2) | GPIO 4 | `0x38` | Temperature & Humidity |
+| **BMP280** | 3.3V | GND | GPIO 4 (D2) | GPIO 4 | `0x76` or `0x77` | Barometric Pressure |
+| **ENS160** | 3.3V | GND | GPIO 4 (D2) | GPIO 4 | `0x53` or `0x52` | Air Quality (TVOC/eCO2) |
+| **AS5600** | 3.3V | GND | GPIO 4 (D2) | GPIO 4 | `0x36` | Wind Direction Vane |
+| **BH1750** | 3.3V | GND | GPIO 4 (D2) | GPIO 4 | `0x23` | Ambient Light (Lux) |
 
 **Note:** On the pressure sensor, remove the 2 resistors on SDA and SCL because when too many sensors are placed in parallel, the value of these resistors drops too much.
 
@@ -198,13 +205,14 @@ Connect the **SDA** and **SCL** pins of all I2C sensors in parallel to the ESP82
   <img src="https://raw.githubusercontent.com/byte4geek/weatherstation/refs/heads/main/images/humidity_sens_excluion.jpg" alt="Humidity Sensor Exclusion" width="50%">
 </p>
 
-### Pulse / Interrupt Sensors
+### Pulse / Interrupt Sensors & System Pins
 
-| Sensor Signal | ESP8266 Pin | Internal Pull-Up | Trigger Mode |
-|---|---|---|---|
-| **Rain Gauge Signal** | GPIO 14 (D5) | Yes (`INPUT_PULLUP`) | `FALLING` edge |
-| **Anemometer Signal** | GPIO 12 (D6) | Yes (`INPUT_PULLUP`) | `FALLING` edge |
-| **FLASH Button** | GPIO 0 (D3) | Yes (`INPUT_PULLUP`) | `LOW` when pressed |
+| Signal / Function | ESP8266 Pin | ESP32 Pin | Internal Pull-Up | Trigger Mode | Description |
+|---|---|---|---|---|---|
+| **Rain Gauge Signal** | GPIO 14 (D5) | GPIO 14 | Yes (`INPUT_PULLUP`) | `FALLING` edge | Reed / Hall sensor pulse on tipping bucket |
+| **Anemometer Signal** | GPIO 12 (D6) | GPIO 12 | Yes (`INPUT_PULLUP`) | `FALLING` edge | Hall sensor pulse for wind speed |
+| **FLASH Button** | GPIO 0 (D3) | GPIO 0 | Yes (`INPUT_PULLUP`) | `LOW` when pressed | Hold for 10 seconds to trigger Factory Reset |
+| **Onboard Blue LED** | GPIO 2 (D4) | GPIO 2 | Output | Active-LOW (8266) / Active-HIGH (ESP32) | Fast blink during boot/connect, solid ON when connected |
 
 ---
 
@@ -446,20 +454,28 @@ This project is built using [PlatformIO](https://platformio.org/).
 ### Prerequisites
 - Visual Studio Code with PlatformIO IDE extension installed.
 
-### PlatformIO Configuration (`platformio.ini`)
+### PlatformIO Environments (`platformio.ini`)
+
+The project provides two environments:
+* `[env:nodemcuv2]`: Optimized for **ESP8266** (NodeMCU 1.0 / ESP-12E Module).
+* `[env:esp32dev]`: Optimized for **ESP32** (ESP32 Dev Module / WROOM-32) using `min_spiffs.csv` (dual 1.92 MB OTA slots).
+
 ```ini
+[platformio]
+default_envs = nodemcuv2 ; default target
+
 [env:nodemcuv2]
 platform = espressif8266
 board = nodemcuv2
 framework = arduino
 monitor_speed = 115200
-board_build.flash_mode = dout
-lib_deps =
-    bblanchon/ArduinoJson@^7.0.0
-    knolleary/PubSubClient@^2.8
-    adafruit/Adafruit AHTX0@^2.0.5
-    adafruit/Adafruit BMP280 Library@^2.6.8
-    https://github.com/tzapu/WiFiManager.git
+
+[env:esp32dev]
+platform = espressif32
+board = esp32dev
+framework = arduino
+board_build.partitions = min_spiffs.csv
+monitor_speed = 115200
 ```
 
 ### Selecting weather-network upload services
@@ -515,17 +531,48 @@ shown in the settings page or weather-service API responses.
 > below the reported maximum. Runtime heap is separate; check **Free Memory**
 > in the dashboard after an upload, especially when enabling HTTPS services.
 
-### Building & Uploading
+### Building & Uploading Instructions
+
+#### Option A: Building for ESP8266
 ```bash
-# Build firmware
-pio run
+# Compile ESP8266 firmware
+pio run -e nodemcuv2
 
-# Upload to ESP8266 via USB (COM port)
-pio run --target upload
+# Upload to ESP8266 via USB COM port
+pio run -e nodemcuv2 --target upload
 
-# Open Serial Monitor
+# Open Serial Monitor at 115200 baud
 pio device monitor -b 115200
 ```
+
+#### Option B: Building for ESP32
+```bash
+# Compile ESP32 firmware
+pio run -e esp32dev
+
+# Upload to ESP32 via USB COM port
+pio run -e esp32dev --target upload
+
+# Open Serial Monitor at 115200 baud
+pio device monitor -b 115200
+```
+
+#### Option C: Compile Both Targets Simultaneously
+```bash
+pio run
+```
+
+### Pre-Compiled Firmware Binary Artifacts
+After compiling, the ready-to-use binaries are located in the project root:
+* **`WeatherStation_v1.0.8_ESP8266.bin`**:
+  * For ESP8266 NodeMCU v2/v3 boards.
+  * Flashable via USB or via Web UI OTA (`/update`).
+* **`WeatherStation_v1.0.8_ESP32_OTA.bin`**:
+  * Application binary for ESP32-WROOM / DevKitC boards.
+  * Flashable via Web UI OTA (`/update`).
+* **`WeatherStation_v1.0.8_ESP32_MERGED_0x0.bin`**:
+  * Complete unified 4 MB image containing bootloader (`0x1000`), partition table (`0x8000`), `boot_app0` (`0xe000`), and application (`0x10000`).
+  * Flashable to offset `0x0` via **esptool.py** or **Espressif Flash Download Tool** when initializing a fresh ESP32 board.
 ---
 # Donation
 Buy me a coffee
@@ -537,7 +584,7 @@ Buy me a coffee
 ## 📄 License & Credits
 
 - **Author**: byte4geek
-- **Firmware Version**: v1.0.7 (Release 2026)
+- **Firmware Version**: v1.0.8 (Release 2026)
 - **License**: [MIT License](LICENSE.md)
 
 ```text

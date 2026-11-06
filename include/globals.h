@@ -1,17 +1,19 @@
 // File: include/globals.h
 #pragma once
 #include <Arduino.h>
+// Include platform-specific Wi-Fi stack (ESP32 vs ESP8266)
 #if defined(ESP32)
 #include <WiFi.h>
 #else
 #include <ESP8266WiFi.h>
 #endif
 #include <Preferences.h>
+// Cross-platform compatibility helpers for CPU, reset info, chip ID, and Wi-Fi power management
 #include "esp_compat.h"
 #include <PubSubClient.h>
 
 // --- Firmware Version ---
-#define FIRMWARE_VERSION "1.0.7"
+#define FIRMWARE_VERSION "1.0.8"
 
 // --- RAIN DATA CONFIGURATION ---
 extern volatile uint32_t total_bucket_tips;
@@ -143,7 +145,7 @@ void led_blink_mqtt();
 // --- Reboot & Ping ---
 void request_reboot();
 String get_ping_device_id();
-bool send_cloud_ping(String event_type);
+bool send_cloud_ping(String event_type, bool verbose_log = false);
 
 // --- Crash Diagnostics ---
 extern bool opt_in_crash_dump;

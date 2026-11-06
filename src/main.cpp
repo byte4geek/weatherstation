@@ -3,11 +3,12 @@
 #include "weather_services.h"
 #include <Ticker.h>
 
+// EspSaveCrash is only available for the ESP8266 architecture
 #if !defined(ESP32)
 #include <EspSaveCrash.h>
 #endif
 
-
+// Platform-specific HTTP client header
 #if defined(ESP32)
 #include <HTTPClient.h>
 #else
@@ -15,9 +16,13 @@
 #endif
 #include <WiFiClientSecure.h>
 #include <ArduinoJson.h>
+
+// Fallback onboard LED GPIO definition for ESP32-WROOM boards that do not define LED_BUILTIN
 #if defined(ESP32) && !defined(LED_BUILTIN)
 #define LED_BUILTIN 2
 #endif
+
+// Low-level system/SDK headers for hardware RNG and network stack control
 #if defined(ESP32)
 #include <esp_system.h>
 #include <esp_mac.h>
@@ -40,15 +45,19 @@ void request_reboot() {
 String get_ping_device_id() {
     prefs.begin("weather", false);
     String id = prefs.getString("device_id", "");
+    const String prefix = String(WEATHER_MCU_NAME) + "_";
     if (id == "") {
-        // Generate a random ID: ws_ followed by two 32-bit random hex values
-        #if defined(ESP32)
-        id = "ws_" + String(esp_random(), HEX) + String(esp_random(), HEX);
+        // Generate a random hardware-tagged ID: ESP32_<hex> or ESP8266_<hex>
+#if defined(ESP32)
+        id = prefix + String(esp_random(), HEX) + String(esp_random(), HEX);
 #else
-        id = "ws_" + String(os_random(), HEX) + String(os_random(), HEX);
+        id = prefix + String(os_random(), HEX) + String(os_random(), HEX);
 #endif
         prefs.putString("device_id", id);
-
+    } else if (id.startsWith("ws_")) {
+        // Automatically migrate legacy "ws_<hex>" IDs to "ESP32_<hex>" or "ESP8266_<hex>" preserving the unique suffix
+        id = prefix + id.substring(3);
+        prefs.putString("device_id", id);
     }
     prefs.end();
     return id;
@@ -68,22 +77,34 @@ String xor_decrypt(const uint8_t *data, size_t len, uint8_t key_val) {
     return decrypted;
 }
 
-bool send_cloud_ping(String event_type) {
-    if (WiFi.status() != WL_CONNECTED) return false;
+bool send_cloud_ping(String event_type, bool verbose_log) {
+    if (WiFi.status() != WL_CONNECTED) {
+        if (verbose_log) {
+            app_log("[Cloud Ping] Wi-Fi not connected. Ping aborted.");
+        }
+        return false;
+    }
 
     WiFiClient client;
     HTTPClient http;
+#if !defined(ESP32)
+    http.setTimeout(2500); // Must be strictly below ESP8266 3200ms software watchdog timeout
+#else
     http.setTimeout(3500);
+#endif
 
     String target_url = xor_decrypt(URL, URL_LEN, 0x5A);
     if (target_url.startsWith("https://")) {
         target_url = "http://" + target_url.substring(8);
     }
 
-    #if !defined(ESP32)
-    ESP.wdtFeed();
+#if !defined(ESP32)
+    ESP.wdtFeed(); // Feed software watchdog on ESP8266 during blocking network I/O
 #endif
     if (!http.begin(client, target_url)) {
+        if (verbose_log) {
+            app_log("[Cloud Ping] Failed to initialize HTTP client for '%s'.", target_url.c_str());
+        }
         return false;
     }
 
@@ -91,32 +112,42 @@ bool send_cloud_ping(String event_type) {
     http.addHeader("X-WeatherStation-Ping-Token", xor_decrypt(TOKEN, TOKEN_LEN, 0x5A));
 
     JsonDocument doc;
-    doc["uuid"] = get_ping_device_id();
+    String device_uuid = get_ping_device_id();
+    uint32_t current_uptime = millis() / 1000;
+    doc["uuid"] = device_uuid;
     doc["version"] = FIRMWARE_VERSION;
     doc["fw_md5"] = weather_firmware_md5();
     doc["event"] = event_type;
-    doc["uptime_s"] = millis() / 1000;
+    doc["uptime"] = current_uptime;    // Legacy Cloudflare worker schema (v1.0.0 - v1.0.6)
+    doc["uptime_s"] = current_uptime;  // Modern schema (v1.0.7+)
     doc["reset_reason"] = weather_reset_reason();
     doc["free_heap"] = ESP.getFreeHeap();
     doc["heap_fragmentation"] = weather_heap_fragmentation();
+    doc["crash_dump"] = "Free Heap: " + String(ESP.getFreeHeap()) + " B | Reset Reason: " + weather_reset_reason();
 
     String payload;
     serializeJson(doc, payload);
 
-    #if !defined(ESP32)
-    ESP.wdtFeed();
+#if !defined(ESP32)
+    ESP.wdtFeed(); // Feed software watchdog on ESP8266 during blocking network I/O
 #endif
     int httpCode = http.POST(payload);
-    #if !defined(ESP32)
-    ESP.wdtFeed();
+#if !defined(ESP32)
+    ESP.wdtFeed(); // Feed software watchdog on ESP8266 during blocking network I/O
 #endif
 
     http.end();
     if (httpCode > 0) {
-        app_log("[Cloud Ping] Sent event '%s' successfully (HTTP %d).", event_type.c_str(), httpCode);
+        if (verbose_log) {
+            app_log("[Cloud Ping] Sent event '%s' for UUID '%s' successfully (HTTP %d).",
+                    event_type.c_str(), device_uuid.c_str(), httpCode);
+        }
         return (httpCode == 200 || httpCode == 204);
     } else {
-        app_log("[Cloud Ping] Failed to send event '%s' (error: %d).", event_type.c_str(), httpCode);
+        if (verbose_log) {
+            app_log("[Cloud Ping] Failed to send event '%s' for UUID '%s' (error: %d).",
+                    event_type.c_str(), device_uuid.c_str(), httpCode);
+        }
         return false;
     }
 }
@@ -133,7 +164,11 @@ void check_and_send_crash_dump() {
 
     WiFiClient client;
     HTTPClient http;
+#if !defined(ESP32)
+    http.setTimeout(2500); // Must be strictly below ESP8266 3200ms software watchdog timeout
+#else
     http.setTimeout(3500);
+#endif
 
     String target_url = xor_decrypt(URL, URL_LEN, 0x5A);
     if (target_url.endsWith("/ping")) {
@@ -143,8 +178,8 @@ void check_and_send_crash_dump() {
         target_url = "http://" + target_url.substring(8);
     }
 
-    #if !defined(ESP32)
-    ESP.wdtFeed();
+#if !defined(ESP32)
+    ESP.wdtFeed(); // Feed software watchdog on ESP8266 during blocking network I/O
 #endif
     if (!http.begin(client, target_url)) return;
 
@@ -165,12 +200,12 @@ void check_and_send_crash_dump() {
     String payload;
     serializeJson(doc, payload);
 
-    #if !defined(ESP32)
-    ESP.wdtFeed();
+#if !defined(ESP32)
+    ESP.wdtFeed(); // Feed software watchdog on ESP8266 during blocking network I/O
 #endif
     int httpCode = http.POST(payload);
-    #if !defined(ESP32)
-    ESP.wdtFeed();
+#if !defined(ESP32)
+    ESP.wdtFeed(); // Feed software watchdog on ESP8266 during blocking network I/O
 #endif
 
     if (httpCode > 0) {
@@ -184,11 +219,13 @@ void check_and_send_crash_dump() {
 }
 
 Ticker led_ticker;
-const int LED_PIN = 2; // GPIO 2 is the onboard blue LED on ESP-12E (active-LOW)
+const int LED_PIN = 2; // GPIO 2 is the onboard blue LED on both ESP8266 (active-LOW) and ESP32-WROOM (active-HIGH)
 bool led_ticker_active = false;
 
-void IRAM_ATTR tick_led() {
-    digitalWrite(LED_PIN, !digitalRead(LED_PIN));
+void tick_led() {
+    static bool led_state = false;
+    led_state = !led_state;
+    digitalWrite(LED_PIN, led_state ? WEATHER_LED_ON : WEATHER_LED_OFF);
 }
 
 void start_led_fast_blink() {
@@ -203,22 +240,22 @@ void set_led_connected() {
         led_ticker.detach();
         led_ticker_active = false;
     }
-    digitalWrite(LED_PIN, LOW); // solid ON (active-LOW)
+    digitalWrite(LED_PIN, WEATHER_LED_ON); // Solid ON when connected to Wi-Fi
 }
 
 void led_blink_mqtt() {
     if (led_ticker_active) return; // Don't interrupt if already flashing fast (disconnected)
     
     // Double blink sequence: OFF -> ON -> OFF -> ON
-    digitalWrite(LED_PIN, HIGH); // OFF
+    digitalWrite(LED_PIN, WEATHER_LED_OFF); // OFF
     delay(80);
-    digitalWrite(LED_PIN, LOW);  // ON (1st blink)
+    digitalWrite(LED_PIN, WEATHER_LED_ON);  // ON (1st blink)
     delay(100);
-    digitalWrite(LED_PIN, HIGH); // OFF
+    digitalWrite(LED_PIN, WEATHER_LED_OFF); // OFF
     delay(100);
-    digitalWrite(LED_PIN, LOW);  // ON (2nd blink)
+    digitalWrite(LED_PIN, WEATHER_LED_ON);  // ON (2nd blink)
     delay(100);
-    digitalWrite(LED_PIN, LOW);  // Keep solid ON (connected state)
+    digitalWrite(LED_PIN, WEATHER_LED_ON);  // Keep solid ON (connected state)
 }
 #include "web_server.h"
 #include "mqtt_manager.h"
@@ -252,7 +289,7 @@ const char* get_wifi_disconnection_reason_str(uint8_t reason) {
         case 19: return "PAIRWISE_CIPHER_INVALID (WPA3 / PMF incompatible mode)";
         case 24: return "CIPHER_SUITE_REJECTED";
         case 200: return "BEACON_TIMEOUT (Signal weak or AP on 5GHz/different channel)";
-        case 201: return "NO_AP_FOUND (SSID not found - ESP32 only supports 2.4GHz!)";
+        case 201: return "NO_AP_FOUND (SSID not found - " WEATHER_MCU_NAME " only supports 2.4GHz!)";
         case 202: return "AUTH_FAIL";
         case 203: return "ASSOC_FAIL";
         case 204: return "HANDSHAKE_TIMEOUT";
@@ -397,6 +434,17 @@ int   wind_dir_buf_idx   = 0;
 int   wind_speed_buf_count = 0;   // Filled slots (up to wind_speed_avg_samples)
 int   wind_dir_buf_count   = 0;
 
+#if defined(ESP32)
+// On ESP32, use esp_timer_get_time() (IRAM-safe microseconds) and native ESP-IDF GPIO ISR signature
+void IRAM_ATTR wind_sensor_isr(void* arg) {
+    (void)arg;
+    uint32_t now_us = weather_isr_micros();
+    if ((uint32_t)(now_us - last_wind_interrupt_time) >= (uint32_t)wind_debounce_ms * 1000UL) {
+        wind_pulse_count++;
+        last_wind_interrupt_time = now_us;
+    }
+}
+#else
 void IRAM_ATTR wind_sensor_isr() {
     unsigned long now = millis();
     if (now - last_wind_interrupt_time >= wind_debounce_ms) {
@@ -404,6 +452,7 @@ void IRAM_ATTR wind_sensor_isr() {
         last_wind_interrupt_time = now;
     }
 }
+#endif
 
 void reset_wind_gust() {
     wind_gust_kmh = 0.0f;
@@ -433,6 +482,17 @@ uint32_t last_processed_tips = 0;
 static volatile unsigned long last_tip_time = 0;
 
 // Interrupt Service Routine for tipping bucket
+#if defined(ESP32)
+// On ESP32, use esp_timer_get_time() (IRAM-safe microseconds) and native ESP-IDF GPIO ISR signature
+void IRAM_ATTR rain_sensor_isr(void* arg) {
+    (void)arg;
+    uint32_t now_us = weather_isr_micros();
+    if ((uint32_t)(now_us - last_tip_time) >= (uint32_t)rain_debounce_ms * 1000UL) {
+        total_bucket_tips++;
+        last_tip_time = now_us;
+    }
+}
+#else
 void IRAM_ATTR rain_sensor_isr() {
     unsigned long now = millis();
     if (now - last_tip_time >= rain_debounce_ms) {
@@ -440,11 +500,16 @@ void IRAM_ATTR rain_sensor_isr() {
         last_tip_time = now;
     }
 }
+#endif
 
-// Function to attach the interrupt
+// Function to attach the rain gauge hardware interrupt
 void attach_sensor_interrupt() {
+#if defined(ESP32)
+    weather_attach_falling_isr(rain_sensor_pin, rain_sensor_isr);
+#else
     pinMode(rain_sensor_pin, INPUT_PULLUP);
     attachInterrupt(digitalPinToInterrupt(rain_sensor_pin), rain_sensor_isr, FALLING);
+#endif
     app_log("Rain gauge interrupt configured on GPIO %d", rain_sensor_pin);
 }
 
@@ -913,9 +978,9 @@ void read_environmental_sensors() {
 void setup() {
     
 
-    // Configure onboard blue LED
+    // Configure onboard blue LED (active-LOW on ESP8266, active-HIGH on ESP32)
     pinMode(LED_PIN, OUTPUT);
-    digitalWrite(LED_PIN, HIGH); // Start OFF
+    digitalWrite(LED_PIN, WEATHER_LED_OFF); // Start OFF
     start_led_fast_blink(); // Fast flash indicating boot/connecting
 
     Serial.begin(115200);
@@ -932,7 +997,8 @@ void setup() {
 #endif
     
     load_settings();
-    
+    app_log("[System] Device UUID: %s", get_ping_device_id().c_str());
+
     // Initialize I2C and environmental sensors
     Wire.begin(i2c_sda_pin, i2c_scl_pin);
     Wire.setClock(i2c_clock_khz * 1000);
@@ -999,8 +1065,12 @@ void setup() {
     attach_sensor_interrupt();
 
     // Setup wind sensor hardware interrupt
+#if defined(ESP32)
+    weather_attach_falling_isr(wind_sensor_pin, wind_sensor_isr);
+#else
     pinMode(wind_sensor_pin, INPUT_PULLUP);
     attachInterrupt(digitalPinToInterrupt(wind_sensor_pin), wind_sensor_isr, FALLING);
+#endif
     app_log("Wind sensor interrupt configured on GPIO %d", wind_sensor_pin);
 
     // Setup FLASH button (GPIO 0) for 10-second hold factory reset
@@ -1010,9 +1080,54 @@ void setup() {
     WiFi.persistent(true);
     weather_disable_wifi_sleep(); // Disable modem sleep to avoid dropped 4-way handshake packets
 
-    // Register WiFi event handlers for precise SDK diagnostic logs
-    #if !defined(ESP32)
+    // Register WiFi event handlers for precise SDK diagnostic logs on both ESP32 and ESP8266
+#if defined(ESP32)
+    WiFi.onEvent([](WiFiEvent_t event, WiFiEventInfo_t info) {
+        switch (event) {
+            case ARDUINO_EVENT_WIFI_STA_CONNECTED: {
+                char ssid_buf[33] = {0};
+                size_t len = info.wifi_sta_connected.ssid_len;
+                if (len > 32) len = 32;
+                memcpy(ssid_buf, info.wifi_sta_connected.ssid, len);
+                const uint8_t* b = info.wifi_sta_connected.bssid;
+                app_log("[WiFi EVENT] Associated with SSID: '%s' | BSSID: %02X:%02X:%02X:%02X:%02X:%02X | Channel: %d",
+                        ssid_buf, b[0], b[1], b[2], b[3], b[4], b[5],
+                        info.wifi_sta_connected.channel);
+                break;
+            }
+            case ARDUINO_EVENT_WIFI_STA_DISCONNECTED: {
+                char ssid_buf[33] = {0};
+                size_t len = info.wifi_sta_disconnected.ssid_len;
+                if (len > 32) len = 32;
+                memcpy(ssid_buf, info.wifi_sta_disconnected.ssid, len);
+                uint8_t reason = info.wifi_sta_disconnected.reason;
+                app_log("[WiFi EVENT DIAGNOSTIC] Disconnected from SSID: '%s' | Reason Code: %d (%s)",
+                        ssid_buf, (int)reason, get_wifi_disconnection_reason_str(reason));
+                
+                // Immediately trigger all-channel rescan and reconnect on AP channel-hopping / beacon timeout
+                if (wifi_ssid.length() > 0 && (reason == 200 || reason == 202 || reason == 201 || reason == 8)) {
+                    WiFi.disconnect(false, false);
+                    WiFi.setScanMethod(WIFI_ALL_CHANNEL_SCAN);
+                    WiFi.setSortMethod(WIFI_CONNECT_AP_BY_SIGNAL);
+                    WiFi.begin(wifi_ssid.c_str(), wifi_pass.c_str());
+                }
+                break;
+            }
+            case ARDUINO_EVENT_WIFI_STA_GOT_IP: {
+                IPAddress ip(info.got_ip.ip_info.ip.addr);
+                IPAddress mask(info.got_ip.ip_info.netmask.addr);
+                IPAddress gw(info.got_ip.ip_info.gw.addr);
+                app_log("[WiFi EVENT] Got IP: %s | Subnet: %s | Gateway: %s",
+                        ip.toString().c_str(), mask.toString().c_str(), gw.toString().c_str());
+                break;
+            }
+            default:
+                break;
+        }
+    });
+#else
     onStationConnectedHandler = WiFi.onStationModeConnected([](const WiFiEventStationModeConnected& evt) {
+        weather_disable_wifi_sleep(); // Enforce WIFI_NONE_SLEEP immediately upon association to prevent beacon drops
         app_log("[WiFi EVENT] Associated with SSID: '%s' | BSSID: %02X:%02X:%02X:%02X:%02X:%02X | Channel: %d",
                 evt.ssid.c_str(),
                 evt.bssid[0], evt.bssid[1], evt.bssid[2],
@@ -1033,8 +1148,8 @@ void setup() {
                 evt.mask.toString().c_str(),
                 evt.gw.toString().c_str());
     });
+#endif
 
-    #endif
     // Ensure hostname is set in SDK before station mode initialization
 #if !defined(ESP32)
     wifi_station_set_hostname(hostname.c_str());
@@ -1043,6 +1158,12 @@ void setup() {
     WiFi.persistent(true);
     WiFi.mode(WIFI_STA);
     weather_disable_wifi_sleep(); // Essential for FRITZ!Box 4-way handshake
+#if defined(ESP32)
+    // Scan all 2.4GHz channels and pick the strongest AP (prevents channel-lock on Mesh/auto-channel routers)
+    WiFi.setScanMethod(WIFI_ALL_CHANNEL_SCAN);
+    WiFi.setSortMethod(WIFI_CONNECT_AP_BY_SIGNAL);
+#endif
+    WiFi.setAutoReconnect(true);
 
     bool direct_connected = false;
 
@@ -1073,7 +1194,14 @@ void setup() {
             WiFi.config(target_ip, target_gw, target_nm, target_dns1, target_dns2);
         }
 
+#if defined(ESP32)
+        WiFi.setScanMethod(WIFI_ALL_CHANNEL_SCAN);
+        WiFi.setSortMethod(WIFI_CONNECT_AP_BY_SIGNAL);
+#endif
+        WiFi.setAutoReconnect(true);
         WiFi.begin(wifi_ssid.c_str(), wifi_pass.c_str());
+        weather_disable_wifi_sleep(); // Prevent ESP8266 WiFi.begin() from reverting to MODEM_SLEEP
+        WiFi.setAutoReconnect(true);
         app_log("[WiFi] Connecting to '%s'...", wifi_ssid.c_str());
 
         unsigned long wifi_start = millis();
@@ -1186,9 +1314,9 @@ void loop() {
             
             // Rapid visual LED feedback (Fast Blink for 2 seconds)
             for (int i = 0; i < 20; i++) {
-                digitalWrite(LED_BUILTIN, LOW); // ON
+                digitalWrite(LED_PIN, WEATHER_LED_ON);  // ON
                 delay(50);
-                digitalWrite(LED_BUILTIN, HIGH); // OFF
+                digitalWrite(LED_PIN, WEATHER_LED_OFF); // OFF
                 delay(50);
             }
 
@@ -1205,26 +1333,26 @@ void loop() {
         flash_button_press_start = 0; // Reset timer when button is released
     }
 
-    // Check and send crash dump if present (staggered to prevent heap exhaustion)
+    // Check and send crash dump and boot/reboot cloud ping once Wi-Fi is connected
     static bool crash_checked = false;
     static bool ping_boot_sent = false;
-    static unsigned long ntp_sync_time = 0;
+    static unsigned long wifi_ready_time = 0;
     static unsigned long last_ping_boot_attempt = 0;
-    
-    if (WiFi.status() == WL_CONNECTED && time(nullptr) > 1700000000UL) {
-        if (ntp_sync_time == 0) {
-            ntp_sync_time = millis();
+
+    if (WiFi.status() == WL_CONNECTED) {
+        if (wifi_ready_time == 0) {
+            wifi_ready_time = millis();
         }
-        
-        // 1. Check/send crash dump 5 seconds after NTP sync
-        if (!crash_checked && (millis() - ntp_sync_time > 5000)) {
+
+        // 1. Check/send crash dump 5 seconds after Wi-Fi connection is established
+        if (!crash_checked && (millis() - wifi_ready_time > 5000UL)) {
             crash_checked = true;
             check_and_send_crash_dump();
         }
-        
-        // 2. Send boot/reboot ping 20 seconds after NTP sync (retries every 30s if failed, avoiding MQTT reconnect collision)
-        if (!ping_boot_sent && (millis() - ntp_sync_time > 20000)) {
-            if (mqttClient.connected() && (last_ping_boot_attempt == 0 || millis() - last_ping_boot_attempt >= 30000UL)) {
+
+        // 2. Send boot/reboot ping 8 seconds after Wi-Fi connection (retries every 20s if failed; does not require MQTT)
+        if (!ping_boot_sent && (millis() - wifi_ready_time > 8000UL)) {
+            if (last_ping_boot_attempt == 0 || millis() - last_ping_boot_attempt >= 20000UL) {
                 last_ping_boot_attempt = millis();
                 if (send_cloud_ping(is_reboot_pending ? "reboot" : "boot")) {
                     ping_boot_sent = true;
@@ -1244,15 +1372,46 @@ void loop() {
         }
     }
 
-    // Manage LED state based on Wi-Fi connection status
+    // Manage LED state and non-blocking Wi-Fi auto-reconnect watchdog (handles AP channel hops & mesh roaming)
     static bool last_wifi_connected = false;
+    static unsigned long wifi_disconnected_since = 0;
+    static unsigned long last_wifi_reconnect_try = 0;
     bool current_wifi_connected = (WiFi.status() == WL_CONNECTED);
     if (current_wifi_connected != last_wifi_connected) {
         last_wifi_connected = current_wifi_connected;
         if (current_wifi_connected) {
             set_led_connected();
+            wifi_disconnected_since = 0;
         } else {
             start_led_fast_blink();
+            wifi_disconnected_since = millis();
+            last_wifi_reconnect_try = millis();
+        }
+    }
+
+    if (!current_wifi_connected && wifi_ssid.length() > 0) {
+        unsigned long now_ms = millis();
+        if (wifi_disconnected_since == 0) {
+            wifi_disconnected_since = now_ms;
+            last_wifi_reconnect_try = now_ms;
+        } else if (now_ms - last_wifi_reconnect_try >= 8000UL) {
+            last_wifi_reconnect_try = now_ms;
+            unsigned long down_sec = (now_ms - wifi_disconnected_since) / 1000UL;
+            app_log("[WiFi WATCHDOG] Disconnected for %lu s. Triggering all-channel reconnect to '%s'...",
+                    down_sec, wifi_ssid.c_str());
+#if defined(ESP32)
+            WiFi.disconnect(false, false);
+            WiFi.setScanMethod(WIFI_ALL_CHANNEL_SCAN);
+            WiFi.setSortMethod(WIFI_CONNECT_AP_BY_SIGNAL);
+            WiFi.setAutoReconnect(true);
+            WiFi.begin(wifi_ssid.c_str(), wifi_pass.c_str());
+#else
+            // On ESP8266, SDK auto-reconnect handles channel roaming automatically.
+            // Only force an SDK reconnect cycle if disconnected for more than 30 seconds.
+            if (down_sec >= 30) {
+                WiFi.reconnect();
+            }
+#endif
         }
     }
 
@@ -1376,7 +1535,10 @@ void loop() {
     // External services consume the fully updated observation snapshot.
     handle_weather_services();
 
-    delay(10); // Small delay to yield to ESP32 background tasks
+#if !defined(ESP32)
+    ESP.wdtFeed(); // Feed ESP8266 software watchdog at end of each loop
+#endif
+    delay(10); // Small delay to yield to background tasks
 }
 
 void reset_ens160_baseline() {

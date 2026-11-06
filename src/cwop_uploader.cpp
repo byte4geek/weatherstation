@@ -1,5 +1,6 @@
 #include "cwop_uploader.h"
 
+// Platform-specific TCP/Wi-Fi client header (ESP32 vs ESP8266)
 #if defined(ESP32)
 #include <WiFi.h>
 #else

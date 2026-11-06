@@ -1,13 +1,11 @@
 #include "wu_uploader.h"
 
+// Platform-specific HTTP and TLS client headers (ESP32 mbedTLS vs ESP8266 BearSSL)
 #if defined(ESP32)
 #include <HTTPClient.h>
-#else
-#include <ESP8266HTTPClient.h>
-#endif
-#if defined(ESP32)
 #include <WiFiClientSecure.h>
 #else
+#include <ESP8266HTTPClient.h>
 #include <WiFiClientSecureBearSSL.h>
 #endif
 
@@ -103,13 +101,14 @@ WuUploadResult upload_wu_observation(const char* service_name,
     http.setUserAgent(String("byte4geek-weatherstation/") + FIRMWARE_VERSION);
 
     if (url.startsWith("https://")) {
-        #if defined(ESP32)
-    WiFiClientSecure client;
+#if defined(ESP32)
+        WiFiClientSecure client;
 #else
-    BearSSL::WiFiClientSecure client;
+        BearSSL::WiFiClientSecure client;
 #endif
         client.setInsecure();
-        #if !defined(ESP32)
+#if !defined(ESP32)
+        // Reduce BearSSL RX/TX buffer sizes on ESP8266 to prevent heap exhaustion
         client.setBufferSizes(1024, 512);
 #endif
         client.setTimeout(5000);

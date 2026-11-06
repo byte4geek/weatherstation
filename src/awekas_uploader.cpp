@@ -1,18 +1,13 @@
 #include "awekas_uploader.h"
 
+// Platform-specific HTTP, Wi-Fi, and MD5 hashing headers (ESP32 vs ESP8266)
 #if defined(ESP32)
 #include <HTTPClient.h>
-#else
-#include <ESP8266HTTPClient.h>
-#endif
-#if defined(ESP32)
 #include <WiFi.h>
-#else
-#include <ESP8266WiFi.h>
-#endif
-#if defined(ESP32)
 #include <MD5Builder.h>
 #else
+#include <ESP8266HTTPClient.h>
+#include <ESP8266WiFi.h>
 #include <Hash.h>
 #endif
 

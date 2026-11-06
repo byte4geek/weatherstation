@@ -4,6 +4,7 @@
 #include "mqtt_manager.h"
 #include "weather_services.h"
 #include "weather_observation.h"
+// Platform-specific HTTP server and OTA firmware update headers (ESP32 vs ESP8266)
 #if defined(ESP32)
 #include <WebServer.h>
 #include <Update.h>
@@ -14,6 +15,7 @@
 #include <ArduinoJson.h>
 #include <Wire.h>
 
+// Instantiate HTTP web server on port 80 using the native platform class
 #if defined(ESP32)
 WebServer server(80);
 #else
@@ -647,7 +649,7 @@ const char index_html[] PROGMEM = R"rawliteral(
     <div class="container">
         <header>
             <h1>DIY Smart Weather Station 2026</h1>
-            <p>ESP32 Weather Monitor &bull; v<span id="fw_ver_title">--</span></p>
+            <p>)rawliteral" WEATHER_MCU_NAME R"rawliteral( Weather Monitor &bull; v<span id="fw_ver_title">--</span></p>
         </header>
 
         <nav class="nav-tabs">
@@ -1483,7 +1485,7 @@ R"rawliteral(
             <div class="panel" style="border-color: rgba(239, 68, 68, 0.3);">
                 <div class="panel-section">
                     <h3 style="color: var(--danger);"><i class="mdi mdi-alert-circle-outline" style="color: var(--danger); margin-right: 6px;"></i> Factory Reset</h3>
-                    <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 15px;">Reset all saved configurations (Wi-Fi, MQTT, and calibration) and restart the ESP32.</p>
+                    <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 15px;">Reset all saved configurations (Wi-Fi, MQTT, and calibration) and restart the )rawliteral" WEATHER_MCU_NAME R"rawliteral(.</p>
                     <button class="btn btn-danger" onclick="factoryReset()"><i class="mdi mdi-alert"></i> Reset Device</button>
                 </div>
             </div>
@@ -1502,7 +1504,7 @@ R"rawliteral(
                             <tr style="border-bottom: 2px solid var(--card-border); font-weight: bold; color: var(--primary);">
                                 <th style="text-align: left; padding: 12px 8px;">Sensor / Function</th>
                                 <th style="text-align: left; padding: 12px 8px;">NodeMCU Pin</th>
-                                <th style="text-align: left; padding: 12px 8px;">ESP32 GPIO</th>
+                                <th style="text-align: left; padding: 12px 8px;">)rawliteral" WEATHER_MCU_NAME R"rawliteral( GPIO</th>
                                 <th style="text-align: left; padding: 12px 8px;">Description</th>
                             </tr>
                         </thead>
@@ -1607,7 +1609,7 @@ R"rawliteral(
                                 <span style="font-family: monospace; font-weight: bold; font-size: 1rem; color: var(--primary);">POST /api/reboot</span>
                                 <span style="background: rgba(239, 68, 68, 0.15); color: var(--danger); font-size: 0.8rem; font-weight: 600; padding: 3px 8px; border-radius: 4px; border: 1px solid rgba(239, 68, 68, 0.3);">Reboot Device</span>
                             </div>
-                            <p style="color: var(--text-muted); font-size: 0.85rem;">Triggers a soft restart of the ESP32 weather station.</p>
+                            <p style="color: var(--text-muted); font-size: 0.85rem;">Triggers a soft restart of the )rawliteral" WEATHER_MCU_NAME R"rawliteral( weather station.</p>
                         </div>
                     </div>
                 </div>
@@ -1999,8 +2001,14 @@ R"rawliteral(
             }
         }
 
+        // Maps internal GPIO numbers to board silkscreen labels (NodeMCU D0-D8 on ESP8266, D<gpio> on ESP32-WROOM)
         function gpioToNodeMCU(gpio) {
-            const mapping = {
+)rawliteral"
+#if defined(ESP32)
+R"rawliteral(            return `D${gpio}`;
+)rawliteral"
+#else
+R"rawliteral(            const mapping = {
                 16: "D0",
                 5: "D1",
                 4: "D2",
@@ -2014,7 +2022,9 @@ R"rawliteral(
                 1: "TX"
             };
             return mapping[gpio] || `GPIO ${gpio}`;
-        }
+)rawliteral"
+#endif
+R"rawliteral(        }
 
         function populateWiringTable(config) {
             const tbody = document.getElementById('wiring_table_body');
@@ -2718,7 +2728,7 @@ R"rawliteral(
             if (confirm("WARNING: This action will reset ALL settings and Wi-Fi credentials. Do you want to proceed?")) {
                 fetch('/api/factory_reset', { method: 'POST' })
                     .then(res => {
-                        alert("Device reset! The ESP32 will restart in Access Point mode for configuration.");
+                        alert("Device reset! The )rawliteral" WEATHER_MCU_NAME R"rawliteral( will restart in Access Point mode for configuration.");
                         setTimeout(() => window.location.reload(), 2000);
                     });
             }
@@ -2761,7 +2771,7 @@ void app_log(const char* format, ...) {
     char time_line[LOG_LINE_LENGTH + 32];
     time_t now = time(nullptr);
     struct tm* timeinfo = gmtime(&now);
-    if (timeinfo->tm_year >= 120) {
+    if (timeinfo != nullptr && timeinfo->tm_year >= 120) {
         char time_buf[24];
         strftime(time_buf, sizeof(time_buf), "%Y-%m-%d %H:%M:%S", timeinfo);
         snprintf(time_line, sizeof(time_line), "[%s GMT] %s", time_buf, line);
@@ -2970,6 +2980,11 @@ String execute_console_command(String cmd) {
         
         app_log("Sensor pin set to GPIO %d. Reboot to apply.", rain_sensor_pin);
         return "Sensor pin updated. Reboot to apply (type 'reset').";
+    }
+
+    else if (baseCmd == "send_alive") {
+        bool ok = send_cloud_ping("alive", true);
+        return ok ? "Alive ping sent successfully." : "Failed to send alive ping.";
     }
 
     return "Unknown command. Type 'help' for the list.";
@@ -3603,15 +3618,56 @@ void setup_web_server() {
         request_reboot();
     }, []() {
         HTTPUpload& upload = server.upload();
+#if defined(ESP32)
+        // Track stream offset on ESP32 to transparently support both standard OTA binaries (starting at 0x0 with 0xE9)
+        // and full merged 0x0 flash images (where the application partition starts at offset 0x10000 = 65536).
+        static size_t esp32_raw_offset = 0;
+        static size_t esp32_skip_bytes = 0;
+        static bool esp32_header_checked = false;
+#endif
         if (upload.status == UPLOAD_FILE_START) {
             app_log("OTA update started: %s", upload.filename.c_str());
+#if defined(ESP32)
+            esp32_raw_offset = 0;
+            esp32_skip_bytes = 0;
+            esp32_header_checked = false;
+            // On ESP32, pass UPDATE_SIZE_UNKNOWN for streamed multipart HTTP uploads
             if (!Update.begin(UPDATE_SIZE_UNKNOWN)) {
+#else
+            // On ESP8266, pass available sketch space size
+            if (!Update.begin(ESP.getFreeSketchSpace())) {
+#endif
                 Update.printError(Serial);
             }
         } else if (upload.status == UPLOAD_FILE_WRITE) {
+#if defined(ESP32)
+            if (!esp32_header_checked && upload.currentSize > 0) {
+                esp32_header_checked = true;
+                // A merged 0x0 ESP32 image starts with 0xFF padding up to 0x1000 and places the app at 0x10000
+                if (upload.buf[0] == 0xFF) {
+                    esp32_skip_bytes = 0x10000;
+                    app_log("Detected merged 0x0 ESP32 image; skipping 64KB bootloader/partition header for OTA...");
+                }
+            }
+            size_t chunk_start = 0;
+            if (esp32_raw_offset < esp32_skip_bytes) {
+                size_t remaining_skip = esp32_skip_bytes - esp32_raw_offset;
+                if (upload.currentSize <= remaining_skip) {
+                    esp32_raw_offset += upload.currentSize;
+                    return;
+                }
+                chunk_start = remaining_skip;
+            }
+            esp32_raw_offset += upload.currentSize;
+            size_t write_len = upload.currentSize - chunk_start;
+            if (write_len > 0 && Update.write(upload.buf + chunk_start, write_len) != write_len) {
+                Update.printError(Serial);
+            }
+#else
             if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
                 Update.printError(Serial);
             }
+#endif
         } else if (upload.status == UPLOAD_FILE_END) {
             if (Update.end(true)) {
                 app_log("OTA update completed! Size: %u bytes", upload.totalSize);
